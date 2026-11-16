@@ -1,26 +1,48 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-snow: #f4f7fc;
+  --color-stone: #dadbd2;
+  --color-butter: #f0f2cd;
+  --color-lime: #dbfc93;
+  --color-aqua: #89c9c9;
+  --color-lilac: #dda9ef;
+  --color-flame: #f76711;
+  --color-forest: #113f3f;
+  --color-ink: #02251f;
+  --color-canvas: #f6f7f4;
+
+  --font-sans: var(--font-switzer), ui-sans-serif, system-ui, sans-serif;
+  --font-brand: var(--font-instrument), var(--font-switzer), sans-serif;
+
+  --radius-btn: 6.316px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@layer base {
+  html {
+    color: var(--color-ink);
+    background: var(--color-canvas);
+    -webkit-tap-highlight-color: transparent;
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  body {
+    font-family: var(--font-sans);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-flame);
+    outline-offset: 2px;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
