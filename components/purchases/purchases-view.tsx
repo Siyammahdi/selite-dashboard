@@ -1,16 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { PurchaseDrawer } from "@/components/purchases/purchase-drawer";
 import { ChevronRightIcon } from "@/components/ui/icons";
 import { FilterTabs } from "@/components/ui/filter-tabs";
-import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pagination } from "@/components/ui/pagination";
 import { ToolbarActions } from "@/components/ui/toolbar-actions";
-import { formatAmount, formatTaka } from "@/lib/format";
+import { formatAmount } from "@/lib/format";
 import { paginate } from "@/lib/metrics";
-import { addPurchase, useDashboard } from "@/lib/stores/dashboard";
-import { pushToast } from "@/lib/stores/ui";
+import { useDashboard } from "@/lib/stores/dashboard";
 import type { Purchase } from "@/lib/types";
 
 const PAGE_SIZE = 8;
@@ -20,6 +19,7 @@ export function PurchasesView() {
   const [tab, setTab] = useState<"Product" | "Others">("Product");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Purchase | null>(null);
+  const [createKind, setCreateKind] = useState<"product" | "others" | null>(null);
 
   const filtered = useMemo(
     () => state.purchases.filter((p) => (tab === "Product" ? p.kind === "product" : p.kind === "others")),
@@ -27,36 +27,26 @@ export function PurchasesView() {
   );
   const paged = paginate(filtered, page, PAGE_SIZE);
 
-  function createPurchase(kind: "product" | "others") {
-    const product = state.products[0];
-    const purchase: Purchase = {
-      id: `PUR-${Date.now().toString().slice(-5)}`,
-      productId: kind === "product" ? (product?.id ?? null) : null,
-      product: kind === "product" ? (product?.name.split("(")[0]?.trim() ?? "Bags") : "Misc Purchase",
-      category: kind === "product" ? (product?.categoryLabel ?? "Bags") : "Others",
-      quantity: kind === "product" ? 10 : 1,
-      purchasePrice: kind === "product" ? (product?.purchasePrice ?? 500) : 1500,
-      vendor: kind === "product" ? "Atik- Deluxe Shop" : "General Vendor",
-      date: new Date().toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }),
-      kind,
-    };
-    addPurchase(purchase);
-    setTab(kind === "product" ? "Product" : "Others");
-    setPage(1);
-    pushToast("Purchase recorded");
-  }
-
   return (
     <div className="mx-auto flex w-full max-w-[1132px] flex-col gap-4">
       <PageHeader
         title="Purchases"
         actions={[
-          { label: "Others Purchase", variant: "accent", onClick: () => createPurchase("others") },
-          { label: "New Purchase", onClick: () => createPurchase("product") },
+          {
+            label: "Others Purchase",
+            variant: "accent",
+            onClick: () => {
+              setSelected(null);
+              setCreateKind("others");
+            },
+          },
+          {
+            label: "New Purchase",
+            onClick: () => {
+              setSelected(null);
+              setCreateKind("product");
+            },
+          },
         ]}
       />
 
@@ -112,7 +102,10 @@ export function PurchasesView() {
                     <button
                       type="button"
                       className="text-ink transition hover:translate-x-0.5"
-                      onClick={() => setSelected(purchase)}
+                      onClick={() => {
+                        setCreateKind(null);
+                        setSelected(purchase);
+                      }}
                       aria-label={`Open ${purchase.id}`}
                     >
                       <ChevronRightIcon />
@@ -132,31 +125,30 @@ export function PurchasesView() {
         />
       </section>
 
-      <Modal open={!!selected} title={selected?.product ?? "Purchase"} onClose={() => setSelected(null)}>
-        {selected ? (
-          <div className="space-y-2 text-sm">
-            <p>
-              <span className="text-ink/50">Vendor:</span> {selected.vendor}
-            </p>
-            <p>
-              <span className="text-ink/50">Category:</span> {selected.category}
-            </p>
-            <p>
-              <span className="text-ink/50">Qty:</span> {selected.quantity}
-            </p>
-            <p>
-              <span className="text-ink/50">Unit cost:</span> {formatTaka(selected.purchasePrice)}
-            </p>
-            <p>
-              <span className="text-ink/50">Line total:</span>{" "}
-              {formatTaka(selected.purchasePrice * selected.quantity)}
-            </p>
-            <p>
-              <span className="text-ink/50">Date:</span> {selected.date}
-            </p>
-          </div>
-        ) : null}
-      </Modal>
+      <PurchaseDrawer
+        open={createKind === "product"}
+        kind="product"
+        onClose={() => {
+          setCreateKind(null);
+          setTab("Product");
+          setPage(1);
+        }}
+      />
+      <PurchaseDrawer
+        open={createKind === "others"}
+        kind="others"
+        onClose={() => {
+          setCreateKind(null);
+          setTab("Others");
+          setPage(1);
+        }}
+      />
+      <PurchaseDrawer
+        open={!!selected}
+        kind={selected?.kind ?? "product"}
+        purchase={selected}
+        onClose={() => setSelected(null)}
+      />
     </div>
   );
 }

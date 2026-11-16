@@ -1,17 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ExpenseDrawer } from "@/components/finance/expense-drawer";
 import { ChevronRightIcon } from "@/components/ui/icons";
 import { FilterTabs } from "@/components/ui/filter-tabs";
-import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pagination } from "@/components/ui/pagination";
 import { StatCard } from "@/components/ui/stat-card";
 import { ToolbarActions } from "@/components/ui/toolbar-actions";
 import { formatAmount, formatTaka } from "@/lib/format";
 import { financeTotals, paginate } from "@/lib/metrics";
-import { addExpense, addInvestment, useDashboard } from "@/lib/stores/dashboard";
-import { pushToast } from "@/lib/stores/ui";
+import { useDashboard } from "@/lib/stores/dashboard";
 import type { Expense, Investment } from "@/lib/types";
 
 const PAGE_SIZE = 8;
@@ -21,6 +20,7 @@ export function FinanceView() {
   const [tab, setTab] = useState<"Expense" | "Investments">("Expense");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Expense | Investment | null>(null);
+  const [createMode, setCreateMode] = useState<"expense" | "investment" | null>(null);
   const totals = financeTotals(state);
 
   const list = tab === "Expense" ? state.expenses : state.investments;
@@ -69,41 +69,15 @@ export function FinanceView() {
             label: "Add New Invest",
             variant: "accent",
             onClick: () => {
-              const item: Investment = {
-                id: `INV-${Date.now().toString().slice(-4)}`,
-                name: "New Investment",
-                category: "Operations",
-                amount: 10000,
-                date: new Date().toLocaleDateString("en-GB", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                }),
-              };
-              addInvestment(item);
-              setTab("Investments");
-              setPage(1);
-              pushToast("Investment added");
+              setSelected(null);
+              setCreateMode("investment");
             },
           },
           {
             label: "Add New Expense",
             onClick: () => {
-              const item: Expense = {
-                id: `EXP-${Date.now().toString().slice(-4)}`,
-                name: "New Expense",
-                category: "Others",
-                amount: 2000,
-                date: new Date().toLocaleDateString("en-GB", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                }),
-              };
-              addExpense(item);
-              setTab("Expense");
-              setPage(1);
-              pushToast("Expense added");
+              setSelected(null);
+              setCreateMode("expense");
             },
           },
         ]}
@@ -165,7 +139,10 @@ export function FinanceView() {
                     <button
                       type="button"
                       className="text-ink transition hover:translate-x-0.5"
-                      onClick={() => setSelected(row)}
+                      onClick={() => {
+                        setCreateMode(null);
+                        setSelected(row);
+                      }}
                       aria-label={`Open ${row.id}`}
                     >
                       <ChevronRightIcon />
@@ -185,24 +162,30 @@ export function FinanceView() {
         />
       </section>
 
-      <Modal open={!!selected} title={selected?.name ?? "Record"} onClose={() => setSelected(null)}>
-        {selected ? (
-          <div className="space-y-2 text-sm">
-            <p>
-              <span className="text-ink/50">ID:</span> {selected.id}
-            </p>
-            <p>
-              <span className="text-ink/50">Category:</span> {selected.category}
-            </p>
-            <p>
-              <span className="text-ink/50">Amount:</span> {formatTaka(selected.amount)}
-            </p>
-            <p>
-              <span className="text-ink/50">Date:</span> {selected.date}
-            </p>
-          </div>
-        ) : null}
-      </Modal>
+      <ExpenseDrawer
+        open={createMode === "expense"}
+        mode="expense"
+        onClose={() => {
+          setCreateMode(null);
+          setTab("Expense");
+          setPage(1);
+        }}
+      />
+      <ExpenseDrawer
+        open={createMode === "investment"}
+        mode="investment"
+        onClose={() => {
+          setCreateMode(null);
+          setTab("Investments");
+          setPage(1);
+        }}
+      />
+      <ExpenseDrawer
+        open={!!selected}
+        mode={tab === "Expense" ? "expense" : "investment"}
+        record={selected}
+        onClose={() => setSelected(null)}
+      />
     </div>
   );
 }

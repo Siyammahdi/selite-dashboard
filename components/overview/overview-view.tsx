@@ -4,16 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { OrderDrawer } from "@/components/orders/order-drawer";
 import { ArrowRightIcon } from "@/components/ui/icons";
-import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatAmount, formatTaka } from "@/lib/format";
 import { alertSummary, overviewStats, topSelling } from "@/lib/metrics";
-import { addOrder, useDashboard } from "@/lib/stores/dashboard";
-import { pushToast } from "@/lib/stores/ui";
-import type { AdminOrder } from "@/lib/types";
+import { useDashboard } from "@/lib/stores/dashboard";
 
 export function OverviewView() {
   const state = useDashboard();
@@ -23,38 +21,6 @@ export function OverviewView() {
   const alerts = useMemo(() => alertSummary(state.orders, state.products), [state.orders, state.products]);
   const recent = state.orders.slice(0, 9);
   const tops = topSelling(state.products, 5);
-
-  function createQuickOrder() {
-    const product = state.products.find((p) => p.active && p.stock > 0) ?? state.products[0];
-    if (!product) return;
-    const order: AdminOrder = {
-      id: `SL${Date.now().toString().slice(-8)}`,
-      createdAt: new Date().toISOString(),
-      customer: "Walk-in Customer",
-      phone: "+880 1700 000000",
-      address: "Dhaka",
-      zone: "inside",
-      category: product.categoryLabel,
-      amount: product.sellingPrice + 80,
-      courier: "Pathao",
-      status: "New Order",
-      items: [
-        {
-          id: product.id,
-          name: product.name,
-          price: product.sellingPrice,
-          quantity: 1,
-          image: product.image,
-        },
-      ],
-      subtotal: product.sellingPrice,
-      deliveryCharge: 80,
-    };
-    addOrder(order);
-    setCreateOpen(false);
-    pushToast(`Order ${order.id} created`);
-    router.push("/orders?status=New%20Order");
-  }
 
   return (
     <div className="mx-auto flex w-full max-w-[1131px] flex-col gap-4">
@@ -89,10 +55,7 @@ export function OverviewView() {
               </thead>
               <tbody>
                 {recent.map((order) => (
-                  <tr
-                    key={order.id}
-                    className="border-b border-stone transition hover:bg-snow/70"
-                  >
+                  <tr key={order.id} className="border-b border-stone transition hover:bg-snow/70">
                     <td className="px-4 py-3 text-forest">#{order.id}</td>
                     <td className="px-4 py-3 font-semibold text-ink">{order.customer}</td>
                     <td className="px-4 py-3 text-ink">{order.phone}</td>
@@ -171,28 +134,11 @@ export function OverviewView() {
         </div>
       </div>
 
-      <Modal open={createOpen} title="Create New Order" onClose={() => setCreateOpen(false)}>
-        <p className="mb-4 text-sm text-ink/70">
-          Quickly open a COD order from the top in-stock product. You can refine fulfillment on the Orders
-          page.
-        </p>
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            className="rounded-md border border-stone px-4 py-2 text-sm"
-            onClick={() => setCreateOpen(false)}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="rounded-md bg-forest px-4 py-2 text-sm text-snow"
-            onClick={createQuickOrder}
-          >
-            Create order
-          </button>
-        </div>
-      </Modal>
+      <OrderDrawer
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onSaved={() => router.push("/orders?status=New%20Order")}
+      />
     </div>
   );
 }

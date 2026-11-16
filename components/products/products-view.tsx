@@ -1,19 +1,19 @@
 "use client";
 
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import { categories, getCategoryName } from "@/lib/catalog";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
+import { categories } from "@/lib/catalog";
+import { ProductDrawer } from "@/components/products/product-drawer";
 import { ChevronRightIcon } from "@/components/ui/icons";
 import { FilterTabs } from "@/components/ui/filter-tabs";
-import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pagination } from "@/components/ui/pagination";
 import { Toggle } from "@/components/ui/toggle";
 import { ToolbarActions } from "@/components/ui/toolbar-actions";
-import { formatAmount, formatTaka } from "@/lib/format";
+import { formatAmount } from "@/lib/format";
 import { paginate } from "@/lib/metrics";
-import { addProduct, setProductActive, useDashboard } from "@/lib/stores/dashboard";
+import { setProductActive, useDashboard } from "@/lib/stores/dashboard";
 import { pushToast } from "@/lib/stores/ui";
 import type { AdminProduct } from "@/lib/types";
 
@@ -21,17 +21,30 @@ const PAGE_SIZE = 10;
 
 export function ProductsView() {
   const state = useDashboard();
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<"Product" | "Category">("Product");
-  const [page, setPage] = useState(1);
-  const [stockFilter, setStockFilter] = useState(searchParams.get("stock") === "low");
+  const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
+  const stockFilter = searchParams.get("stock") === "low";
   const [selected, setSelected] = useState<AdminProduct | null>(null);
   const [query, setQuery] = useState("");
   const [addOpen, setAddOpen] = useState(false);
 
-  useEffect(() => {
-    setStockFilter(searchParams.get("stock") === "low");
-  }, [searchParams]);
+  function updateQuery(next: { stock?: boolean; page?: number }) {
+    const params = new URLSearchParams(searchParams.toString());
+    const lowStock = next.stock ?? stockFilter;
+    const nextPage = next.page ?? page;
+
+    if (lowStock) params.set("stock", "low");
+    else params.delete("stock");
+
+    if (nextPage <= 1) params.delete("page");
+    else params.set("page", String(nextPage));
+
+    const queryString = params.toString();
+    router.push(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+  }
 
   const filteredProducts = useMemo(() => {
     let list = state.products;
@@ -62,30 +75,6 @@ export function ProductsView() {
     };
   });
 
-  function handleAddProduct() {
-    const id = Date.now();
-    const product: AdminProduct = {
-      id,
-      slug: `new-product-${id}`,
-      name: "New Lifestyle Product",
-      category: "womens-bags",
-      categoryLabel: getCategoryName("womens-bags"),
-      image: "/images/product-thumb-1.png",
-      code: `NEW${String(id).slice(-4)}`,
-      stock: 10,
-      unitsSold: 0,
-      sellingPrice: 999,
-      purchasePrice: 500,
-      active: true,
-      rating: 5,
-    };
-    addProduct(product);
-    setAddOpen(false);
-    setTab("Product");
-    setPage(1);
-    pushToast("Product added to collection");
-  }
-
   return (
     <div className="mx-auto flex w-full max-w-[1132px] flex-col gap-4">
       <PageHeader
@@ -113,7 +102,7 @@ export function ProductsView() {
             active={tab}
             onChange={(label) => {
               setTab(label as "Product" | "Category");
-              setPage(1);
+              updateQuery({ page: 1 });
             }}
           />
           <div className="flex flex-wrap items-center gap-3">
@@ -121,17 +110,14 @@ export function ProductsView() {
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
-                setPage(1);
+                updateQuery({ page: 1 });
               }}
               placeholder="Search products…"
               className="h-9 w-44 rounded-md border border-stone bg-white px-3 text-sm outline-none transition focus:border-forest md:w-56"
             />
             <button
               type="button"
-              onClick={() => {
-                setStockFilter((v) => !v);
-                setPage(1);
-              }}
+              onClick={() => updateQuery({ stock: !stockFilter, page: 1 })}
               className={`rounded-md border px-3 py-1.5 text-sm transition ${
                 stockFilter ? "border-forest bg-forest text-white" : "border-stone bg-white hover:bg-snow"
               }`}
@@ -218,7 +204,7 @@ export function ProductsView() {
             <Pagination
               page={paged.page}
               totalPages={paged.totalPages}
-              onChange={setPage}
+              onChange={(nextPage) => updateQuery({ page: nextPage })}
               helper={`${paged.total} products · synced from Selite storefront catalog`}
             />
           </>
@@ -231,7 +217,7 @@ export function ProductsView() {
                 onClick={() => {
                   setQuery(cat.name.split(" ")[0] ?? "");
                   setTab("Product");
-                  setPage(1);
+                  updateQuery({ page: 1 });
                 }}
                 className="animate-fade-up flex items-center gap-3 rounded-xl border border-stone bg-white p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md"
                 style={{ animationDelay: `${index * 40}ms` }}
@@ -250,59 +236,12 @@ export function ProductsView() {
         )}
       </section>
 
-      <Modal open={addOpen} title="Add New Item" onClose={() => setAddOpen(false)}>
-        <p className="mb-4 text-sm text-ink/70">
-          Adds a draft product into the admin collection. Connect a CMS/API later for permanent writes.
-        </p>
-        <div className="flex justify-end gap-2">
-          <button type="button" className="rounded-md border border-stone px-4 py-2 text-sm" onClick={() => setAddOpen(false)}>
-            Cancel
-          </button>
-          <button type="button" className="rounded-md bg-forest px-4 py-2 text-sm text-snow" onClick={handleAddProduct}>
-            Add product
-          </button>
-        </div>
-      </Modal>
-
-      <Modal open={!!selected} title={selected?.name ?? "Product"} onClose={() => setSelected(null)} wide>
-        {selected ? (
-          <div className="grid gap-4 sm:grid-cols-[140px_1fr]">
-            <Image
-              src={selected.image}
-              alt=""
-              width={140}
-              height={140}
-              className="h-[140px] w-[140px] rounded-lg object-cover"
-            />
-            <div className="space-y-2 text-sm">
-              <p>
-                <span className="text-ink/50">Category:</span> {selected.categoryLabel}
-              </p>
-              <p>
-                <span className="text-ink/50">Code:</span> {selected.code}
-              </p>
-              <p>
-                <span className="text-ink/50">Sell:</span> {formatTaka(selected.sellingPrice)} ·{" "}
-                <span className="text-ink/50">Cost:</span> {formatTaka(selected.purchasePrice)}
-              </p>
-              <p>
-                <span className="text-ink/50">Stock:</span> {selected.stock} ·{" "}
-                <span className="text-ink/50">Sold:</span> {selected.unitsSold}
-              </p>
-              <div className="flex items-center gap-2 pt-1">
-                <span className="text-ink/50">Active</span>
-                <Toggle
-                  checked={selected.active}
-                  onChange={(next) => {
-                    setProductActive(selected.id, next);
-                    setSelected({ ...selected, active: next });
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        ) : null}
-      </Modal>
+      <ProductDrawer open={addOpen} onClose={() => setAddOpen(false)} />
+      <ProductDrawer
+        open={!!selected}
+        product={selected}
+        onClose={() => setSelected(null)}
+      />
     </div>
   );
 }

@@ -8,6 +8,10 @@ export type OrderStatus =
   | "Cancelled"
   | "Return";
 
+export type PaymentStatus = "Unpaid" | "Partial" | "Paid";
+export type PaymentMethod = "COD" | "bKash" | "Nagad" | "Card" | "Bank Transfer";
+export type OrderChannel = "Website" | "Facebook" | "Instagram" | "Phone" | "Walk-in";
+
 export type AdminProduct = {
   id: number;
   slug: string;
@@ -22,6 +26,9 @@ export type AdminProduct = {
   purchasePrice: number;
   active: boolean;
   rating: number;
+  description?: string;
+  reviewPolicy?: string;
+  returnPolicy?: string;
 };
 
 export type OrderItem = {
@@ -37,23 +44,39 @@ export type AdminOrder = {
   createdAt: string;
   customer: string;
   phone: string;
+  email?: string;
   address: string;
   zone: "inside" | "outside";
   category: string;
   amount: number;
   courier: string;
+  channel?: OrderChannel;
   status: OrderStatus;
+  paymentStatus?: PaymentStatus;
+  paymentMethod?: PaymentMethod;
+  notes?: string;
   items: OrderItem[];
   subtotal: number;
   deliveryCharge: number;
 };
 
+export type ExpenseCategory =
+  | "Product Purchase"
+  | "Marketing"
+  | "Accessories"
+  | "Salary"
+  | "Technical"
+  | "Others";
+
 export type Expense = {
   id: string;
   name: string;
-  category: "Product Purchase" | "Marketing" | "Accessories" | "Salary" | "Technical" | "Others";
+  category: ExpenseCategory;
   amount: number;
   date: string;
+  details?: string;
+  notes?: string;
+  documentName?: string;
 };
 
 export type Investment = {
@@ -62,6 +85,8 @@ export type Investment = {
   category: string;
   amount: number;
   date: string;
+  details?: string;
+  notes?: string;
 };
 
 export type Purchase = {
@@ -74,6 +99,9 @@ export type Purchase = {
   vendor: string;
   date: string;
   kind: "product" | "others";
+  details?: string;
+  notes?: string;
+  documentName?: string;
 };
 
 export type Note = {

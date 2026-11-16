@@ -1,37 +1,46 @@
 "use client";
 
-import Image from "next/image";
-import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
+import { OrderDrawer } from "@/components/orders/order-drawer";
 import { ChevronRightIcon } from "@/components/ui/icons";
 import { FilterTabs } from "@/components/ui/filter-tabs";
-import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pagination } from "@/components/ui/pagination";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ToolbarActions } from "@/components/ui/toolbar-actions";
-import { formatAmount, formatTaka } from "@/lib/format";
+import { formatAmount } from "@/lib/format";
 import { orderStatusCounts, paginate } from "@/lib/metrics";
-import { addOrder, updateOrderStatus, useDashboard } from "@/lib/stores/dashboard";
-import { pushToast } from "@/lib/stores/ui";
-import type { AdminOrder, OrderStatus } from "@/lib/types";
+import { useDashboard } from "@/lib/stores/dashboard";
+import type { AdminOrder } from "@/lib/types";
 
 const PAGE_SIZE = 8;
 const ALL = "All";
 
 export function OrdersView() {
   const state = useDashboard();
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const initialStatus = searchParams.get("status") ?? ALL;
-  const [tab, setTab] = useState(initialStatus);
-  const [page, setPage] = useState(1);
+  const tab = searchParams.get("status") ?? ALL;
+  const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
   const [selected, setSelected] = useState<AdminOrder | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
 
-  useEffect(() => {
-    setTab(initialStatus);
-    setPage(1);
-  }, [initialStatus]);
+  function updateQuery(next: { status?: string; page?: number }) {
+    const params = new URLSearchParams(searchParams.toString());
+    const status = next.status ?? tab;
+    const nextPage = next.page ?? page;
+
+    if (!status || status === ALL) params.delete("status");
+    else params.set("status", status);
+
+    if (nextPage <= 1) params.delete("page");
+    else params.set("page", String(nextPage));
+
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }
 
   const counts = orderStatusCounts(state.orders);
   const tabs = [
@@ -50,45 +59,6 @@ export function OrdersView() {
   );
   const paged = paginate(filtered, page, PAGE_SIZE);
 
-  function createOrder() {
-    const product = state.products.find((p) => p.active) ?? state.products[0];
-    if (!product) return;
-    const order: AdminOrder = {
-      id: `SL${Date.now().toString().slice(-8)}`,
-      createdAt: new Date().toISOString(),
-      customer: "New Customer",
-      phone: "+880 1700 000099",
-      address: "Dhaka",
-      zone: "inside",
-      category: product.categoryLabel,
-      amount: product.sellingPrice + 80,
-      courier: "Pathao",
-      status: "New Order",
-      items: [
-        {
-          id: product.id,
-          name: product.name,
-          price: product.sellingPrice,
-          quantity: 1,
-          image: product.image,
-        },
-      ],
-      subtotal: product.sellingPrice,
-      deliveryCharge: 80,
-    };
-    addOrder(order);
-    setCreateOpen(false);
-    setTab("New Order");
-    setPage(1);
-    pushToast(`Order #${order.id} created`);
-  }
-
-  function setStatus(order: AdminOrder, status: OrderStatus) {
-    updateOrderStatus(order.id, status);
-    setSelected({ ...order, status });
-    pushToast(`Updated to ${status}`);
-  }
-
   return (
     <div className="mx-auto flex w-full max-w-[1131px] flex-col gap-4">
       <PageHeader title="All Orders" actions={[{ label: "Create New Order", onClick: () => setCreateOpen(true) }]} />
@@ -98,10 +68,7 @@ export function OrdersView() {
           <FilterTabs
             tabs={tabs}
             active={tab}
-            onChange={(label) => {
-              setTab(label);
-              setPage(1);
-            }}
+            onChange={(label) => updateQuery({ status: label, page: 1 })}
           />
           <ToolbarActions
             items={["date", "export"]}
@@ -162,85 +129,26 @@ export function OrdersView() {
         <Pagination
           page={paged.page}
           totalPages={paged.totalPages}
-          onChange={setPage}
+          onChange={(nextPage) => updateQuery({ page: nextPage })}
           helper={`${paged.total} orders · page ${paged.page} of ${paged.totalPages}`}
         />
       </section>
 
-      <Modal open={createOpen} title="Create New Order" onClose={() => setCreateOpen(false)}>
-        <p className="mb-4 text-sm text-ink/70">Create a COD order from the first active catalog product.</p>
-        <div className="flex justify-end gap-2">
-          <button type="button" className="rounded-md border border-stone px-4 py-2 text-sm" onClick={() => setCreateOpen(false)}>
-            Cancel
-          </button>
-          <button type="button" className="rounded-md bg-forest px-4 py-2 text-sm text-snow" onClick={createOrder}>
-            Create order
-          </button>
-        </div>
-      </Modal>
+      <OrderDrawer
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onSaved={(order) => updateQuery({ status: order.status, page: 1 })}
+      />
 
-      <Modal open={!!selected} title={selected ? `Order #${selected.id}` : "Order"} onClose={() => setSelected(null)} wide>
-        {selected ? (
-          <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <p className="text-xs text-ink/50">Customer</p>
-                <p className="font-semibold">{selected.customer}</p>
-                <p className="text-sm">{selected.phone}</p>
-                <p className="text-sm text-ink/70">{selected.address}</p>
-              </div>
-              <div>
-                <p className="text-xs text-ink/50">Fulfillment</p>
-                <p className="text-sm">Courier: {selected.courier}</p>
-                <p className="text-sm">Zone: {selected.zone}</p>
-                <div className="mt-1">
-                  <StatusBadge status={selected.status} />
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-lg border border-stone">
-              {selected.items.map((item) => (
-                <div key={`${selected.id}-${item.id}`} className="flex items-center gap-3 border-b border-stone p-3 last:border-b-0">
-                  {item.image ? (
-                    <Image src={item.image} alt="" width={48} height={48} className="size-12 rounded object-cover" />
-                  ) : null}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{item.name}</p>
-                    <p className="text-sm text-ink/60">
-                      {item.quantity} × {formatTaka(item.price)}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex items-center justify-between text-sm">
-              <span>Total</span>
-              <span className="text-lg font-semibold">{formatTaka(selected.amount)}</span>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {(["New Order", "In Process", "Shipped", "Delivered", "Cancelled", "Return"] as OrderStatus[]).map(
-                (status) => (
-                  <button
-                    key={status}
-                    type="button"
-                    onClick={() => setStatus(selected, status)}
-                    className={`rounded-md border px-3 py-1.5 text-xs transition ${
-                      selected.status === status
-                        ? "border-forest bg-forest text-white"
-                        : "border-stone hover:bg-snow"
-                    }`}
-                  >
-                    {status}
-                  </button>
-                ),
-              )}
-            </div>
-          </div>
-        ) : null}
-      </Modal>
+      <OrderDrawer
+        open={!!selected}
+        order={selected}
+        onClose={() => setSelected(null)}
+        onSaved={(order) => {
+          setSelected(null);
+          updateQuery({ status: order.status, page: 1 });
+        }}
+      />
     </div>
   );
 }
