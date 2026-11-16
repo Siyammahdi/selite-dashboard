@@ -1,9 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { categories } from "@/lib/catalog";
 import { Drawer, DrawerActions } from "@/components/ui/drawer";
-import { DateInput, NumberInput, SelectField, TextArea, TextInput } from "@/components/ui/form-fields";
+import {
+  DateInput,
+  NumberInput,
+  QuantityStepper,
+  SelectField,
+  TextArea,
+  TextInput,
+} from "@/components/ui/form-fields";
 import { DocumentIcon } from "@/components/ui/icons";
 import { dateInputFromDisplay, displayDateFromInput, parseMoney, todayInputValue } from "@/lib/form-utils";
 import { formatTaka } from "@/lib/format";
@@ -14,9 +21,9 @@ import {
   useDashboard,
 } from "@/lib/stores/dashboard";
 import { pushToast } from "@/lib/stores/ui";
-import type { Purchase } from "@/lib/types";
+import type { AdminProduct, Purchase } from "@/lib/types";
 
-const PURCHASE_CATEGORIES = [
+const BASE_PURCHASE_CATEGORIES = [
   "Product Purchase",
   "Marketing",
   "Accessories",
@@ -32,58 +39,88 @@ type PurchaseDrawerProps = {
   onClose: () => void;
 };
 
+function purchaseDefaults(kind: "product" | "others", products: AdminProduct[], purchase?: Purchase | null) {
+  if (purchase) {
+    return {
+      name: purchase.product,
+      productId: purchase.productId ? String(purchase.productId) : "",
+      vendor: purchase.vendor,
+      quantity: String(purchase.quantity),
+      amount: String(purchase.purchasePrice),
+      date: dateInputFromDisplay(purchase.date),
+      category: purchase.category,
+      details: purchase.details ?? "",
+      notes: purchase.notes ?? "",
+      documentName: purchase.documentName ?? "",
+    };
+  }
+  const first = products[0];
+  return {
+    name: kind === "product" ? (first?.name.split("(")[0]?.trim() ?? "") : "",
+    productId: kind === "product" && first ? String(first.id) : "",
+    vendor: "",
+    quantity: kind === "product" ? "10" : "1",
+    amount: kind === "product" ? String(first?.purchasePrice ?? "") : "",
+    date: todayInputValue(),
+    category: kind === "product" ? (first?.categoryLabel ?? "Product Purchase") : "Others",
+    details: "",
+    notes: "",
+    documentName: "",
+  };
+}
+
 export function PurchaseDrawer({ open, kind, purchase, onClose }: PurchaseDrawerProps) {
+  if (!open) return null;
+  return (
+    <PurchaseDrawerForm
+      key={`${kind}-${purchase?.id ?? "create"}`}
+      kind={kind}
+      purchase={purchase}
+      onClose={onClose}
+    />
+  );
+}
+
+function PurchaseDrawerForm({
+  kind,
+  purchase,
+  onClose,
+}: {
+  kind: "product" | "others";
+  purchase?: Purchase | null;
+  onClose: () => void;
+}) {
   const { products } = useDashboard();
   const editing = Boolean(purchase);
-  const [name, setName] = useState("");
-  const [productId, setProductId] = useState("");
-  const [vendor, setVendor] = useState("");
-  const [quantity, setQuantity] = useState("1");
-  const [amount, setAmount] = useState("");
-  const [date, setDate] = useState("");
-  const [category, setCategory] = useState(kind === "product" ? "Product Purchase" : "Others");
-  const [details, setDetails] = useState("");
-  const [notes, setNotes] = useState("");
-  const [documentName, setDocumentName] = useState("");
+  const initial = purchaseDefaults(kind, products, purchase);
+  const [name, setName] = useState(initial.name);
+  const [productId, setProductId] = useState(initial.productId);
+  const [vendor, setVendor] = useState(initial.vendor);
+  const [quantity, setQuantity] = useState(initial.quantity);
+  const [amount, setAmount] = useState(initial.amount);
+  const [date, setDate] = useState(initial.date);
+  const [category, setCategory] = useState(initial.category);
+  const [details, setDetails] = useState(initial.details);
+  const [notes, setNotes] = useState(initial.notes);
+  const [documentName, setDocumentName] = useState(initial.documentName);
+  const [extraCategories, setExtraCategories] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const categoryOptions = useMemo(
+    () => [...new Set([...BASE_PURCHASE_CATEGORIES, ...extraCategories])].map((c) => ({ value: c, label: c })),
+    [extraCategories],
+  );
 
   const productOptions = useMemo(
     () =>
-      products.map((p) => ({
-        value: String(p.id),
-        label: `${p.name} — cost ${formatTaka(p.purchasePrice)}`,
-      })),
+      [...products]
+        .sort((a, b) => Number(b.active) - Number(a.active))
+        .map((p) => ({
+          value: String(p.id),
+          label: `${p.name} — cost ${formatTaka(p.purchasePrice)}`,
+        })),
     [products],
   );
-
-  useEffect(() => {
-    if (!open) return;
-    if (purchase) {
-      setName(purchase.product);
-      setProductId(purchase.productId ? String(purchase.productId) : "");
-      setVendor(purchase.vendor);
-      setQuantity(String(purchase.quantity));
-      setAmount(String(purchase.purchasePrice));
-      setCategory(purchase.category);
-      setDetails(purchase.details ?? "");
-      setNotes(purchase.notes ?? "");
-      setDocumentName(purchase.documentName ?? "");
-      setDate(dateInputFromDisplay(purchase.date));
-    } else {
-      const first = products[0];
-      setName(kind === "product" ? (first?.name.split("(")[0]?.trim() ?? "") : "");
-      setProductId(kind === "product" && first ? String(first.id) : "");
-      setVendor("");
-      setQuantity(kind === "product" ? "10" : "1");
-      setAmount(kind === "product" ? String(first?.purchasePrice ?? "") : "");
-      setDate(todayInputValue());
-      setCategory(kind === "product" ? (first?.categoryLabel ?? "Product Purchase") : "Others");
-      setDetails("");
-      setNotes("");
-      setDocumentName("");
-    }
-    setErrors({});
-  }, [open, purchase, kind, products]);
 
   function onProductChange(id: string) {
     setProductId(id);
@@ -145,7 +182,7 @@ export function PurchaseDrawer({ open, kind, purchase, onClose }: PurchaseDrawer
 
   return (
     <Drawer
-      open={open}
+      open
       title={editing ? "Edit Purchase" : kind === "product" ? "New Purchase" : "Others Purchase"}
       onClose={onClose}
       footer={
@@ -163,6 +200,7 @@ export function PurchaseDrawer({ open, kind, purchase, onClose }: PurchaseDrawer
             label="Catalog product"
             value={productId}
             onChange={onProductChange}
+            searchable
             options={
               productOptions.length
                 ? productOptions
@@ -175,9 +213,8 @@ export function PurchaseDrawer({ open, kind, purchase, onClose }: PurchaseDrawer
 
         <div className="grid grid-cols-2 gap-2">
           <TextInput label="Vendor Name" required value={vendor} onChange={setVendor} error={errors.vendor} />
-          <NumberInput
+          <QuantityStepper
             label="Quantity"
-            required
             min={1}
             value={quantity}
             onChange={setQuantity}
@@ -194,7 +231,18 @@ export function PurchaseDrawer({ open, kind, purchase, onClose }: PurchaseDrawer
           label="Category"
           value={category}
           onChange={setCategory}
-          options={[...new Set(PURCHASE_CATEGORIES)].map((c) => ({ value: c, label: c }))}
+          options={categoryOptions}
+          footerAction={{
+            label: "Add New Category +",
+            onClick: () => {
+              const next = window.prompt("New category name");
+              if (!next?.trim()) return;
+              const nameValue = next.trim();
+              setExtraCategories((prev) => [...prev, nameValue]);
+              setCategory(nameValue);
+              pushToast(`Category “${nameValue}” added`, "info");
+            },
+          }}
         />
 
         <TextArea label="Details" rows={5} value={details} onChange={setDetails} />

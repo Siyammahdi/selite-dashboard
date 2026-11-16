@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Modal } from "@/components/ui/modal";
+import { Drawer, DrawerActions } from "@/components/ui/drawer";
+import { TextInput } from "@/components/ui/form-fields";
 import { PageHeader } from "@/components/ui/page-header";
 import { addRole, useDashboard } from "@/lib/stores/dashboard";
 import { pushToast } from "@/lib/stores/ui";
@@ -13,10 +14,16 @@ export function RolesView() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [selected, setSelected] = useState<string[]>(["orders", "notes"]);
+  const [error, setError] = useState("");
 
   function createRole() {
     if (!name.trim()) {
+      setError("Role name is required");
       pushToast("Role name required", "error");
+      return;
+    }
+    if (!selected.length) {
+      pushToast("Pick at least one permission", "error");
       return;
     }
     addRole({
@@ -27,13 +34,27 @@ export function RolesView() {
     });
     setName("");
     setSelected(["orders", "notes"]);
+    setError("");
     setOpen(false);
     pushToast("Role created");
   }
 
   return (
     <div className="mx-auto flex w-full max-w-[1132px] flex-col gap-4">
-      <PageHeader title="Roles & Permission" actions={[{ label: "Add Role", onClick: () => setOpen(true) }]} />
+      <PageHeader
+        title="Roles & Permission"
+        actions={[
+          {
+            label: "Add Role",
+            onClick: () => {
+              setName("");
+              setSelected(["orders", "notes"]);
+              setError("");
+              setOpen(true);
+            },
+          },
+        ]}
+      />
 
       <div className="grid gap-4 md:grid-cols-2">
         {roles.map((role, index) => (
@@ -57,18 +78,16 @@ export function RolesView() {
         ))}
       </div>
 
-      <Modal open={open} title="Add Role" onClose={() => setOpen(false)}>
-        <div className="space-y-3">
-          <label className="block text-sm">
-            Role name
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="mt-1 h-10 w-full rounded-md border border-stone px-3"
-            />
-          </label>
-          <div>
-            <p className="mb-2 text-sm">Permissions</p>
+      <Drawer
+        open={open}
+        title="Add Role"
+        onClose={() => setOpen(false)}
+        footer={<DrawerActions onSave={createRole} onCancel={() => setOpen(false)} saveLabel="Create role" />}
+      >
+        <div className="flex flex-col gap-3 pb-4">
+          <TextInput label="Role name" required value={name} onChange={setName} error={error} />
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-ink">Permissions</p>
             <div className="flex flex-wrap gap-2">
               {PERMS.map((perm) => {
                 const active = selected.includes(perm);
@@ -89,16 +108,8 @@ export function RolesView() {
               })}
             </div>
           </div>
-          <div className="flex justify-end gap-2">
-            <button type="button" className="rounded-md border border-stone px-4 py-2 text-sm" onClick={() => setOpen(false)}>
-              Cancel
-            </button>
-            <button type="button" className="rounded-md bg-forest px-4 py-2 text-sm text-snow" onClick={createRole}>
-              Create role
-            </button>
-          </div>
         </div>
-      </Modal>
+      </Drawer>
     </div>
   );
 }

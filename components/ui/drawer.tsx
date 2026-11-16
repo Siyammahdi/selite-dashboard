@@ -17,7 +17,10 @@ export function Drawer({ open, title, onClose, children, footer }: DrawerProps) 
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape") return;
+      // Let open custom dropdowns handle Escape first.
+      if (document.querySelector('[role="listbox"]')) return;
+      onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => {

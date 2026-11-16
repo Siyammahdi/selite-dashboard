@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { logoutAction } from "@/app/actions/auth";
 import { pageTitles } from "@/lib/nav";
 import { toggleSidebar } from "@/lib/stores/ui";
@@ -12,6 +12,23 @@ export function Topbar() {
   const title = pageTitles[pathname] ?? "Dashboard";
   const [menuOpen, setMenuOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onPointer = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("mousedown", onPointer);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onPointer);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
 
   return (
     <header className="sticky top-0 z-30 flex h-[66px] items-center justify-between border-b border-stone bg-white/95 py-3 pr-4 pl-4 backdrop-blur md:pr-10">
@@ -30,7 +47,7 @@ export function Topbar() {
         <p className="text-base font-medium tracking-[-0.04em] text-ink">{title}</p>
       </div>
 
-      <div className="relative">
+      <div className="relative" ref={menuRef}>
         <button
           type="button"
           className="relative h-[42px] w-[62px] transition hover:opacity-90"

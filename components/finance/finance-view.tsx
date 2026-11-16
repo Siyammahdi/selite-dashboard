@@ -8,10 +8,11 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Pagination } from "@/components/ui/pagination";
 import { StatCard } from "@/components/ui/stat-card";
 import { ToolbarActions } from "@/components/ui/toolbar-actions";
+import { downloadCsv } from "@/lib/export";
 import { formatAmount, formatTaka } from "@/lib/format";
 import { financeTotals, paginate } from "@/lib/metrics";
 import { useDashboard } from "@/lib/stores/dashboard";
-import type { Expense, Investment } from "@/lib/types";
+import { pushToast } from "@/lib/stores/ui";
 
 const PAGE_SIZE = 8;
 
@@ -19,11 +20,15 @@ export function FinanceView() {
   const state = useDashboard();
   const [tab, setTab] = useState<"Expense" | "Investments">("Expense");
   const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState<Expense | Investment | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [createMode, setCreateMode] = useState<"expense" | "investment" | null>(null);
   const totals = financeTotals(state);
 
   const list = tab === "Expense" ? state.expenses : state.investments;
+  const selected =
+    selectedId == null
+      ? null
+      : ((tab === "Expense" ? state.expenses : state.investments).find((r) => r.id === selectedId) ?? null);
   const paged = paginate(list, page, PAGE_SIZE);
 
   const stats = useMemo(
@@ -69,14 +74,14 @@ export function FinanceView() {
             label: "Add New Invest",
             variant: "accent",
             onClick: () => {
-              setSelected(null);
+              setSelectedId(null);
               setCreateMode("investment");
             },
           },
           {
             label: "Add New Expense",
             onClick: () => {
-              setSelected(null);
+              setSelectedId(null);
               setCreateMode("expense");
             },
           },
@@ -104,13 +109,17 @@ export function FinanceView() {
           />
           <ToolbarActions
             onExport={() => {
-              const blob = new Blob([JSON.stringify(list, null, 2)], { type: "application/json" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = `selite-${tab.toLowerCase()}.json`;
-              a.click();
-              URL.revokeObjectURL(url);
+              downloadCsv(
+                `selite-${tab.toLowerCase()}.csv`,
+                list.map((row) => ({
+                  id: row.id,
+                  name: row.name,
+                  category: row.category,
+                  amount: row.amount,
+                  date: row.date,
+                })),
+              );
+              pushToast(`Exported ${list.length} ${tab.toLowerCase()} records`);
             }}
           />
         </div>
@@ -141,7 +150,7 @@ export function FinanceView() {
                       className="text-ink transition hover:translate-x-0.5"
                       onClick={() => {
                         setCreateMode(null);
-                        setSelected(row);
+                        setSelectedId(row.id);
                       }}
                       aria-label={`Open ${row.id}`}
                     >
@@ -184,7 +193,7 @@ export function FinanceView() {
         open={!!selected}
         mode={tab === "Expense" ? "expense" : "investment"}
         record={selected}
-        onClose={() => setSelected(null)}
+        onClose={() => setSelectedId(null)}
       />
     </div>
   );

@@ -71,6 +71,7 @@ export function createStore<T>(initial: T, storageKey?: string) {
   }
 
   function useValue() {
+    const mounted = useHydrated();
     const value = useSyncExternalStore(subscribe, get, () => initial);
 
     useEffect(() => {
@@ -80,6 +81,8 @@ export function createStore<T>(initial: T, storageKey?: string) {
       if (changed) emit();
     }, []);
 
+    // Keep SSR + hydration paint on the seed snapshot; apply localStorage after mount.
+    if (storageKey && !mounted) return initial;
     return value;
   }
 

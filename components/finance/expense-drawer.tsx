@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Drawer, DrawerActions } from "@/components/ui/drawer";
 import { DateInput, NumberInput, SelectField, TextArea, TextInput } from "@/components/ui/form-fields";
 import { DocumentIcon } from "@/components/ui/icons";
@@ -34,39 +34,62 @@ type ExpenseDrawerProps = {
   onClose: () => void;
 };
 
+function recordDefaults(mode: "expense" | "investment", record?: Expense | Investment | null) {
+  const isExpense = mode === "expense";
+  if (record) {
+    return {
+      name: record.name,
+      amount: String(record.amount),
+      date: dateInputFromDisplay(record.date),
+      category: record.category,
+      details: ("details" in record && record.details) || "",
+      notes: ("notes" in record && record.notes) || "",
+      documentName: ("documentName" in record && record.documentName) || "",
+    };
+  }
+  return {
+    name: "",
+    amount: "",
+    date: todayInputValue(),
+    category: isExpense ? "Others" : "Operations",
+    details: "",
+    notes: "",
+    documentName: "",
+  };
+}
+
 export function ExpenseDrawer({ open, mode, record, onClose }: ExpenseDrawerProps) {
+  if (!open) return null;
+  return (
+    <ExpenseDrawerForm
+      key={`${mode}-${record?.id ?? "create"}`}
+      mode={mode}
+      record={record}
+      onClose={onClose}
+    />
+  );
+}
+
+function ExpenseDrawerForm({
+  mode,
+  record,
+  onClose,
+}: {
+  mode: "expense" | "investment";
+  record?: Expense | Investment | null;
+  onClose: () => void;
+}) {
   const editing = Boolean(record);
   const isExpense = mode === "expense";
-  const [name, setName] = useState("");
-  const [amount, setAmount] = useState("");
-  const [date, setDate] = useState("");
-  const [category, setCategory] = useState(isExpense ? "Others" : "Operations");
-  const [details, setDetails] = useState("");
-  const [notes, setNotes] = useState("");
-  const [documentName, setDocumentName] = useState("");
+  const initial = recordDefaults(mode, record);
+  const [name, setName] = useState(initial.name);
+  const [amount, setAmount] = useState(initial.amount);
+  const [date, setDate] = useState(initial.date);
+  const [category, setCategory] = useState(initial.category);
+  const [details, setDetails] = useState(initial.details);
+  const [notes, setNotes] = useState(initial.notes);
+  const [documentName, setDocumentName] = useState(initial.documentName);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    if (!open) return;
-    if (record) {
-      setName(record.name);
-      setAmount(String(record.amount));
-      setCategory(record.category);
-      setDetails(("details" in record && record.details) || "");
-      setNotes(("notes" in record && record.notes) || "");
-      setDocumentName(("documentName" in record && record.documentName) || "");
-      setDate(dateInputFromDisplay(record.date));
-    } else {
-      setName("");
-      setAmount("");
-      setDate(todayInputValue());
-      setCategory(isExpense ? "Others" : "Operations");
-      setDetails("");
-      setNotes("");
-      setDocumentName("");
-    }
-    setErrors({});
-  }, [open, record, isExpense]);
 
   function validate() {
     const next: Record<string, string> = {};
@@ -138,7 +161,7 @@ export function ExpenseDrawer({ open, mode, record, onClose }: ExpenseDrawerProp
 
   return (
     <Drawer
-      open={open}
+      open
       title={
         editing
           ? isExpense

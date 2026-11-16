@@ -25,7 +25,7 @@ export function ToolbarActions({
           type="button"
           onClick={() => {
             onDate?.();
-            pushToast("Date range: last 30 days", "info");
+            if (!onDate) pushToast("Showing last 30 days", "info");
           }}
           className="inline-flex items-center gap-2 transition hover:text-forest"
         >
@@ -38,7 +38,7 @@ export function ToolbarActions({
           type="button"
           onClick={() => {
             onFilter?.();
-            pushToast("Filters ready — use the tabs above", "info");
+            if (!onFilter) pushToast("Use the status tabs to filter", "info");
           }}
           className="inline-flex items-center gap-2 transition hover:text-forest"
         >
@@ -51,7 +51,6 @@ export function ToolbarActions({
           type="button"
           onClick={() => {
             onExport?.();
-            pushToast("Export started — CSV downloading soon", "success");
           }}
           className="inline-flex items-center gap-2 transition hover:text-forest"
         >

@@ -11,11 +11,11 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Pagination } from "@/components/ui/pagination";
 import { Toggle } from "@/components/ui/toggle";
 import { ToolbarActions } from "@/components/ui/toolbar-actions";
+import { downloadCsv } from "@/lib/export";
 import { formatAmount } from "@/lib/format";
 import { paginate } from "@/lib/metrics";
 import { setProductActive, useDashboard } from "@/lib/stores/dashboard";
 import { pushToast } from "@/lib/stores/ui";
-import type { AdminProduct } from "@/lib/types";
 
 const PAGE_SIZE = 10;
 
@@ -27,9 +27,10 @@ export function ProductsView() {
   const [tab, setTab] = useState<"Product" | "Category">("Product");
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
   const stockFilter = searchParams.get("stock") === "low";
-  const [selected, setSelected] = useState<AdminProduct | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [query, setQuery] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const selected = selectedId != null ? (state.products.find((p) => p.id === selectedId) ?? null) : null;
 
   function updateQuery(next: { stock?: boolean; page?: number }) {
     const params = new URLSearchParams(searchParams.toString());
@@ -126,13 +127,21 @@ export function ProductsView() {
             </button>
             <ToolbarActions
               onExport={() => {
-                const blob = new Blob([JSON.stringify(filteredProducts, null, 2)], { type: "application/json" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "selite-products.json";
-                a.click();
-                URL.revokeObjectURL(url);
+                downloadCsv(
+                  "selite-products.csv",
+                  filteredProducts.map((p) => ({
+                    id: p.id,
+                    name: p.name,
+                    category: p.categoryLabel,
+                    code: p.code,
+                    stock: p.stock,
+                    unitsSold: p.unitsSold,
+                    sellingPrice: p.sellingPrice,
+                    purchasePrice: p.purchasePrice,
+                    active: p.active,
+                  })),
+                );
+                pushToast(`Exported ${filteredProducts.length} products`);
               }}
             />
           </div>
@@ -191,7 +200,7 @@ export function ProductsView() {
                           type="button"
                           className="text-ink transition hover:translate-x-0.5"
                           aria-label={`Open ${product.name}`}
-                          onClick={() => setSelected(product)}
+                          onClick={() => setSelectedId(product.id)}
                         >
                           <ChevronRightIcon />
                         </button>
@@ -237,11 +246,7 @@ export function ProductsView() {
       </section>
 
       <ProductDrawer open={addOpen} onClose={() => setAddOpen(false)} />
-      <ProductDrawer
-        open={!!selected}
-        product={selected}
-        onClose={() => setSelected(null)}
-      />
+      <ProductDrawer open={!!selected} product={selected} onClose={() => setSelectedId(null)} />
     </div>
   );
 }

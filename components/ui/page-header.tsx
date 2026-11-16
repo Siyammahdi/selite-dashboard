@@ -15,7 +15,7 @@ type PageHeaderProps = {
 
 export function PageHeader({ title, actions = [] }: PageHeaderProps) {
   return (
-    <div className="animate-fade-up flex flex-wrap items-center justify-between gap-3">
+    <div className="flex flex-wrap items-center justify-between gap-3">
       <h1 className="text-[28px] leading-none font-semibold tracking-[-0.02em] text-ink md:text-[32px]">
         {title}
       </h1>

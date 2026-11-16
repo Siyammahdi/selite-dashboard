@@ -7,10 +7,11 @@ import { FilterTabs } from "@/components/ui/filter-tabs";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pagination } from "@/components/ui/pagination";
 import { ToolbarActions } from "@/components/ui/toolbar-actions";
+import { downloadCsv } from "@/lib/export";
 import { formatAmount } from "@/lib/format";
 import { paginate } from "@/lib/metrics";
 import { useDashboard } from "@/lib/stores/dashboard";
-import type { Purchase } from "@/lib/types";
+import { pushToast } from "@/lib/stores/ui";
 
 const PAGE_SIZE = 8;
 
@@ -18,8 +19,9 @@ export function PurchasesView() {
   const state = useDashboard();
   const [tab, setTab] = useState<"Product" | "Others">("Product");
   const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState<Purchase | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [createKind, setCreateKind] = useState<"product" | "others" | null>(null);
+  const selected = selectedId ? (state.purchases.find((p) => p.id === selectedId) ?? null) : null;
 
   const filtered = useMemo(
     () => state.purchases.filter((p) => (tab === "Product" ? p.kind === "product" : p.kind === "others")),
@@ -36,14 +38,14 @@ export function PurchasesView() {
             label: "Others Purchase",
             variant: "accent",
             onClick: () => {
-              setSelected(null);
+              setSelectedId(null);
               setCreateKind("others");
             },
           },
           {
             label: "New Purchase",
             onClick: () => {
-              setSelected(null);
+              setSelectedId(null);
               setCreateKind("product");
             },
           },
@@ -65,13 +67,20 @@ export function PurchasesView() {
           />
           <ToolbarActions
             onExport={() => {
-              const blob = new Blob([JSON.stringify(filtered, null, 2)], { type: "application/json" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "selite-purchases.json";
-              a.click();
-              URL.revokeObjectURL(url);
+              downloadCsv(
+                "selite-purchases.csv",
+                filtered.map((p) => ({
+                  id: p.id,
+                  product: p.product,
+                  category: p.category,
+                  quantity: p.quantity,
+                  purchasePrice: p.purchasePrice,
+                  vendor: p.vendor,
+                  date: p.date,
+                  kind: p.kind,
+                })),
+              );
+              pushToast(`Exported ${filtered.length} purchases`);
             }}
           />
         </div>
@@ -104,7 +113,7 @@ export function PurchasesView() {
                       className="text-ink transition hover:translate-x-0.5"
                       onClick={() => {
                         setCreateKind(null);
-                        setSelected(purchase);
+                        setSelectedId(purchase.id);
                       }}
                       aria-label={`Open ${purchase.id}`}
                     >
@@ -147,7 +156,7 @@ export function PurchasesView() {
         open={!!selected}
         kind={selected?.kind ?? "product"}
         purchase={selected}
-        onClose={() => setSelected(null)}
+        onClose={() => setSelectedId(null)}
       />
     </div>
   );

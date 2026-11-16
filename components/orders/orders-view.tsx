@@ -9,10 +9,11 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Pagination } from "@/components/ui/pagination";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ToolbarActions } from "@/components/ui/toolbar-actions";
+import { downloadCsv } from "@/lib/export";
 import { formatAmount } from "@/lib/format";
 import { orderStatusCounts, paginate } from "@/lib/metrics";
 import { useDashboard } from "@/lib/stores/dashboard";
-import type { AdminOrder } from "@/lib/types";
+import { pushToast } from "@/lib/stores/ui";
 
 const PAGE_SIZE = 8;
 const ALL = "All";
@@ -24,8 +25,9 @@ export function OrdersView() {
   const searchParams = useSearchParams();
   const tab = searchParams.get("status") ?? ALL;
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
-  const [selected, setSelected] = useState<AdminOrder | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const selected = selectedId ? (state.orders.find((o) => o.id === selectedId) ?? null) : null;
 
   function updateQuery(next: { status?: string; page?: number }) {
     const params = new URLSearchParams(searchParams.toString());
@@ -73,13 +75,22 @@ export function OrdersView() {
           <ToolbarActions
             items={["date", "export"]}
             onExport={() => {
-              const blob = new Blob([JSON.stringify(filtered, null, 2)], { type: "application/json" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "selite-orders.json";
-              a.click();
-              URL.revokeObjectURL(url);
+              downloadCsv(
+                "selite-orders.csv",
+                filtered.map((o) => ({
+                  id: o.id,
+                  customer: o.customer,
+                  phone: o.phone,
+                  email: o.email ?? "",
+                  category: o.category,
+                  amount: o.amount,
+                  courier: o.courier,
+                  status: o.status,
+                  paymentStatus: o.paymentStatus ?? "",
+                  createdAt: o.createdAt,
+                })),
+              );
+              pushToast(`Exported ${filtered.length} orders`);
             }}
           />
         </div>
@@ -115,7 +126,7 @@ export function OrdersView() {
                       type="button"
                       className="text-ink transition hover:translate-x-0.5"
                       aria-label={`Open ${order.id}`}
-                      onClick={() => setSelected(order)}
+                      onClick={() => setSelectedId(order.id)}
                     >
                       <ChevronRightIcon />
                     </button>
@@ -143,9 +154,9 @@ export function OrdersView() {
       <OrderDrawer
         open={!!selected}
         order={selected}
-        onClose={() => setSelected(null)}
+        onClose={() => setSelectedId(null)}
         onSaved={(order) => {
-          setSelected(null);
+          setSelectedId(null);
           updateQuery({ status: order.status, page: 1 });
         }}
       />

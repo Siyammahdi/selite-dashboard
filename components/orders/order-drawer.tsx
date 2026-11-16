@@ -1,8 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Drawer, DrawerActions } from "@/components/ui/drawer";
-import { DateInput, NumberInput, SelectField, TextArea, TextInput } from "@/components/ui/form-fields";
+import {
+  DateInput,
+  NumberInput,
+  QuantityStepper,
+  SelectField,
+  TextArea,
+  TextInput,
+} from "@/components/ui/form-fields";
 import { PlusIcon, TrashIcon } from "@/components/ui/icons";
 import {
   dateInputFromIso,
@@ -20,6 +27,7 @@ import {
 import { pushToast } from "@/lib/stores/ui";
 import type {
   AdminOrder,
+  AdminProduct,
   OrderChannel,
   OrderItem,
   OrderStatus,
@@ -54,73 +62,67 @@ type OrderDrawerProps = {
   onSaved?: (order: AdminOrder) => void;
 };
 
+let lineSeq = 0;
 function emptyLine(productId = ""): LineDraft {
-  return { key: `line-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, productId, quantity: "1" };
+  lineSeq += 1;
+  return { key: `line-${lineSeq}`, productId, quantity: "1" };
+}
+
+function firstProductId(products: AdminProduct[]) {
+  return String(products.find((p) => p.active)?.id ?? products[0]?.id ?? "");
+}
+
+function initialLines(order: AdminOrder | null | undefined, products: AdminProduct[]): LineDraft[] {
+  if (order?.items.length) {
+    return order.items.map((item) => ({
+      key: `line-${item.id}-${item.quantity}`,
+      productId: String(item.id),
+      quantity: String(item.quantity),
+    }));
+  }
+  return [emptyLine(firstProductId(products))];
 }
 
 export function OrderDrawer({ open, order, onClose, onSaved }: OrderDrawerProps) {
+  if (!open) return null;
+  return (
+    <OrderDrawerForm
+      key={order?.id ?? "create"}
+      order={order}
+      onClose={onClose}
+      onSaved={onSaved}
+    />
+  );
+}
+
+function OrderDrawerForm({
+  order,
+  onClose,
+  onSaved,
+}: {
+  order?: AdminOrder | null;
+  onClose: () => void;
+  onSaved?: (order: AdminOrder) => void;
+}) {
   const { products } = useDashboard();
   const editing = Boolean(order);
 
-  const [customer, setCustomer] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [orderDate, setOrderDate] = useState("");
-  const [channel, setChannel] = useState<OrderChannel>("Website");
-  const [status, setStatus] = useState<OrderStatus>("New Order");
-  const [shippingFee, setShippingFee] = useState("80");
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("Unpaid");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("COD");
-  const [courier, setCourier] = useState("Pathao");
-  const [address, setAddress] = useState("");
-  const [notes, setNotes] = useState("");
-  const [lines, setLines] = useState<LineDraft[]>([emptyLine()]);
+  const [customer, setCustomer] = useState(order?.customer ?? "");
+  const [phone, setPhone] = useState(order?.phone ?? "");
+  const [email, setEmail] = useState(order?.email ?? "");
+  const [orderDate, setOrderDate] = useState(
+    order ? dateInputFromIso(order.createdAt) : todayInputValue(),
+  );
+  const [channel, setChannel] = useState<OrderChannel>(order?.channel ?? "Website");
+  const [status, setStatus] = useState<OrderStatus>(order?.status ?? "New Order");
+  const [shippingFee, setShippingFee] = useState(String(order?.deliveryCharge ?? 80));
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(order?.paymentStatus ?? "Unpaid");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(order?.paymentMethod ?? "COD");
+  const [courier, setCourier] = useState(order?.courier ?? "Pathao");
+  const [address, setAddress] = useState(order?.address ?? "");
+  const [notes, setNotes] = useState(order?.notes ?? "");
+  const [lines, setLines] = useState<LineDraft[]>(() => initialLines(order, products));
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    if (!open) return;
-    const firstId = String(products.find((p) => p.active)?.id ?? products[0]?.id ?? "");
-    if (order) {
-      setCustomer(order.customer);
-      setPhone(order.phone);
-      setEmail(order.email ?? "");
-      setOrderDate(dateInputFromIso(order.createdAt));
-      setChannel(order.channel ?? "Website");
-      setStatus(order.status);
-      setShippingFee(String(order.deliveryCharge));
-      setPaymentStatus(order.paymentStatus ?? "Unpaid");
-      setPaymentMethod(order.paymentMethod ?? "COD");
-      setCourier(order.courier);
-      setAddress(order.address);
-      setNotes(order.notes ?? "");
-      setLines(
-        order.items.length
-          ? order.items.map((item) => ({
-              key: `line-${item.id}-${item.quantity}`,
-              productId: String(item.id),
-              quantity: String(item.quantity),
-            }))
-          : [emptyLine(firstId)],
-      );
-    } else {
-      setCustomer("");
-      setPhone("");
-      setEmail("");
-      setOrderDate(todayInputValue());
-      setChannel("Website");
-      setStatus("New Order");
-      setShippingFee("80");
-      setPaymentStatus("Unpaid");
-      setPaymentMethod("COD");
-      setCourier("Pathao");
-      setAddress("");
-      setNotes("");
-      setLines([emptyLine(firstId)]);
-    }
-    setErrors({});
-    // Reset only when the drawer opens or the target order changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, order?.id]);
 
   const builtItems = useMemo(() => {
     const items: OrderItem[] = [];
@@ -214,7 +216,7 @@ export function OrderDrawer({ open, order, onClose, onSaved }: OrderDrawerProps)
 
   return (
     <Drawer
-      open={open}
+      open
       title={editing ? `Edit Order #${order?.id}` : "Create New Order"}
       onClose={onClose}
       footer={
@@ -256,7 +258,7 @@ export function OrderDrawer({ open, order, onClose, onSaved }: OrderDrawerProps)
                     : [{ value: "", label: "No products available" }]
                 }
               />
-              <NumberInput
+              <QuantityStepper
                 label="Quantity"
                 min={1}
                 value={line.quantity}
@@ -279,12 +281,7 @@ export function OrderDrawer({ open, order, onClose, onSaved }: OrderDrawerProps)
           <button
             type="button"
             className="inline-flex w-fit items-center gap-2 rounded px-2 py-1 text-sm text-ink transition hover:bg-snow"
-            onClick={() =>
-              setLines((prev) => [
-                ...prev,
-                emptyLine(String(products.find((p) => p.active)?.id ?? products[0]?.id ?? "")),
-              ])
-            }
+            onClick={() => setLines((prev) => [...prev, emptyLine(firstProductId(products))])}
           >
             Add another item
             <PlusIcon className="size-2.5" />
