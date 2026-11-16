@@ -1,4 +1,4 @@
-import type { OrderStatus } from "@/lib/data";
+import type { OrderStatus } from "@/lib/types";
 
 const styles: Record<OrderStatus, string> = {
   "New Order": "border-forest bg-snow text-forest",
