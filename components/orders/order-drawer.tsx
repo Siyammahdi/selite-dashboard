@@ -201,6 +201,7 @@ function OrderDrawerForm({
 
   function handleDelete() {
     if (!order) return;
+    if (!window.confirm(`Delete order #${order.id}?`)) return;
     deleteOrder(order.id);
     pushToast(`Order #${order.id} deleted`, "info");
     onClose();
@@ -288,12 +289,25 @@ function OrderDrawerForm({
           </button>
         </div>
 
-        <SelectField
-          label="Order status"
-          value={status}
-          onChange={(v) => setStatus(v as OrderStatus)}
-          options={STATUS_OPTIONS.map((s) => ({ value: s, label: s }))}
-        />
+        <div className="flex flex-col gap-1.5">
+          <span className="text-sm text-ink">Order status</span>
+          <div className="flex flex-wrap gap-2">
+            {STATUS_OPTIONS.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setStatus(option)}
+                className={`rounded-md border px-3 py-1.5 text-xs transition ${
+                  status === option
+                    ? "border-forest bg-forest text-white"
+                    : "border-stone bg-white text-ink hover:bg-snow"
+                }`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="grid grid-cols-2 gap-2">
           <NumberInput label="Shipping Fee" min={0} value={shippingFee} onChange={setShippingFee} />

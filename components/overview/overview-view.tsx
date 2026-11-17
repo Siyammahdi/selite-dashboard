@@ -8,10 +8,12 @@ import { OrderDrawer } from "@/components/orders/order-drawer";
 import { ArrowRightIcon } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
-import { StatusBadge } from "@/components/ui/status-badge";
+import { StatusSelect } from "@/components/ui/status-select";
 import { formatAmount, formatTaka } from "@/lib/format";
 import { alertSummary, overviewStats, topSelling } from "@/lib/metrics";
-import { useDashboard } from "@/lib/stores/dashboard";
+import { updateOrderStatus, useDashboard } from "@/lib/stores/dashboard";
+import { pushToast } from "@/lib/stores/ui";
+import type { OrderStatus } from "@/lib/types";
 
 export function OverviewView() {
   const state = useDashboard();
@@ -55,13 +57,23 @@ export function OverviewView() {
               </thead>
               <tbody>
                 {recent.map((order) => (
-                  <tr key={order.id} className="border-b border-stone transition hover:bg-snow/70">
+                  <tr
+                    key={order.id}
+                    className="cursor-pointer border-b border-stone transition hover:bg-snow/70"
+                    onClick={() => router.push(`/orders?status=${encodeURIComponent(order.status)}`)}
+                  >
                     <td className="px-4 py-3 text-forest">#{order.id}</td>
                     <td className="px-4 py-3 font-semibold text-ink">{order.customer}</td>
                     <td className="px-4 py-3 text-ink">{order.phone}</td>
                     <td className="px-4 py-3 text-center text-forest">{formatAmount(order.amount)}</td>
-                    <td className="px-4 py-3 text-center">
-                      <StatusBadge status={order.status} />
+                    <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                      <StatusSelect
+                        value={order.status}
+                        onChange={(status: OrderStatus) => {
+                          updateOrderStatus(order.id, status);
+                          pushToast(`Order #${order.id} → ${status}`);
+                        }}
+                      />
                     </td>
                   </tr>
                 ))}

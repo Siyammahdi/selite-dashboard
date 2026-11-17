@@ -128,6 +128,7 @@ function ProductDrawerForm({
 
   function handleDelete() {
     if (!product) return;
+    if (!window.confirm(`Delete product “${product.name}”?`)) return;
     deleteProduct(product.id);
     pushToast("Product deleted", "info");
     onClose();

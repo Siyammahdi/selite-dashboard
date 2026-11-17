@@ -5,10 +5,12 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { categories } from "@/lib/catalog";
 import { ProductDrawer } from "@/components/products/product-drawer";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ChevronRightIcon } from "@/components/ui/icons";
 import { FilterTabs } from "@/components/ui/filter-tabs";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pagination } from "@/components/ui/pagination";
+import { SearchField } from "@/components/ui/search-field";
 import { Toggle } from "@/components/ui/toggle";
 import { ToolbarActions } from "@/components/ui/toolbar-actions";
 import { downloadCsv } from "@/lib/export";
@@ -107,14 +109,13 @@ export function ProductsView() {
             }}
           />
           <div className="flex flex-wrap items-center gap-3">
-            <input
+            <SearchField
               value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
+              onChange={(value) => {
+                setQuery(value);
                 updateQuery({ page: 1 });
               }}
               placeholder="Search products…"
-              className="h-9 w-44 rounded-md border border-stone bg-white px-3 text-sm outline-none transition focus:border-forest md:w-56"
             />
             <button
               type="button"
@@ -148,6 +149,13 @@ export function ProductsView() {
         </div>
 
         {tab === "Product" ? (
+          paged.items.length === 0 ? (
+            <EmptyState
+              title={query || stockFilter ? "No products match your filters" : "No products yet"}
+              description="Try clearing search / low-stock filter, or add a new item."
+              action={{ label: "Add New Item", onClick: () => setAddOpen(true) }}
+            />
+          ) : (
           <>
             <div className="overflow-x-auto rounded-lg border border-stone bg-white">
               <table className="w-full min-w-[980px] border-collapse text-sm">
@@ -217,6 +225,7 @@ export function ProductsView() {
               helper={`${paged.total} products · synced from Selite storefront catalog`}
             />
           </>
+          )
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {categoryRows.map((cat, index) => (

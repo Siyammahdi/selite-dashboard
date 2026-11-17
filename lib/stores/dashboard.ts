@@ -135,6 +135,13 @@ export function addNote(note: Note) {
   dashboardStore.set((s) => ({ ...s, notes: [note, ...s.notes] }));
 }
 
+export function updateNote(id: string, patch: Partial<Note>) {
+  dashboardStore.set((s) => ({
+    ...s,
+    notes: s.notes.map((n) => (n.id === id ? { ...n, ...patch } : n)),
+  }));
+}
+
 export function toggleNotePin(id: string) {
   dashboardStore.set((s) => ({
     ...s,
@@ -148,4 +155,18 @@ export function deleteNote(id: string) {
 
 export function addRole(role: Role) {
   dashboardStore.set((s) => ({ ...s, roles: [role, ...s.roles] }));
+}
+
+export function updateRole(id: string, patch: Partial<Role>) {
+  dashboardStore.set((s) => ({
+    ...s,
+    roles: s.roles.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+  }));
+}
+
+export function deleteRole(id: string) {
+  dashboardStore.set((s) => ({
+    ...s,
+    roles: s.roles.filter((r) => r.id !== id),
+  }));
 }
