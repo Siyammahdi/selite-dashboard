@@ -64,6 +64,41 @@ export function TrashIcon({ className = "size-5" }: IconProps) {
   );
 }
 
+export function CheckIcon({ className = "size-3" }: IconProps) {
+  return (
+    <svg viewBox="0 0 12 10" fill="none" aria-hidden className={className}>
+      <path d="M1 5 4.5 8.5 11 1.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function StarIcon({ className = "size-5", filled = false }: IconProps & { filled?: boolean }) {
+  return (
+    <svg viewBox="0 0 20 20" fill={filled ? "currentColor" : "none"} aria-hidden className={className}>
+      <path
+        d="M10 1.5l2.47 5.18 5.53.68-4.08 3.94 1.08 5.7L10 14.2l-4.99 2.8 1.08-5.7-4.08-3.94 5.53-.68L10 1.5Z"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function ImageUploadIcon({ className = "size-6" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
+      <path
+        d="M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5v11A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5v-11Z"
+        stroke="currentColor"
+        strokeWidth="1.3"
+      />
+      <circle cx="8.5" cy="9.5" r="1.4" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M4.5 16 9 11.5l2.8 2.8L15 11l4.8 4.8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function DocumentIcon({ className = "size-6" }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>

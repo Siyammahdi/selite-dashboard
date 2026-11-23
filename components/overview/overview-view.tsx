@@ -25,7 +25,7 @@ export function OverviewView() {
   const tops = topSelling(state.products, 5);
 
   return (
-    <div className="mx-auto flex w-full max-w-[1131px] flex-col gap-4">
+    <div className="flex w-full flex-col gap-4">
       <PageHeader title="Overview" actions={[{ label: "Create New Order", onClick: () => setCreateOpen(true) }]} />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

@@ -15,7 +15,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { ToolbarActions } from "@/components/ui/toolbar-actions";
 import { downloadCsv } from "@/lib/export";
 import { formatAmount } from "@/lib/format";
-import { paginate } from "@/lib/metrics";
+import { isLowStock, paginate } from "@/lib/metrics";
 import { setProductActive, useDashboard } from "@/lib/stores/dashboard";
 import { pushToast } from "@/lib/stores/ui";
 
@@ -51,7 +51,7 @@ export function ProductsView() {
 
   const filteredProducts = useMemo(() => {
     let list = state.products;
-    if (stockFilter) list = list.filter((p) => p.stock > 0 && p.stock <= 5);
+    if (stockFilter) list = list.filter(isLowStock);
     if (query.trim()) {
       const q = query.toLowerCase();
       list = list.filter(
@@ -73,13 +73,13 @@ export function ProductsView() {
       name: cat.name,
       count: items.length,
       active: items.filter((p) => p.active).length,
-      lowStock: items.filter((p) => p.stock <= 5).length,
+      lowStock: items.filter(isLowStock).length,
       image: items[0]?.image ?? "/images/product-thumb-1.png",
     };
   });
 
   return (
-    <div className="mx-auto flex w-full max-w-[1132px] flex-col gap-4">
+    <div className="flex w-full flex-col gap-4">
       <PageHeader
         title="All Products Collection"
         actions={[
@@ -187,7 +187,11 @@ export function ProductsView() {
                         </div>
                       </td>
                       <td className="px-4 py-3 font-semibold text-ink">{product.categoryLabel}</td>
-                      <td className={`px-4 py-3 font-semibold ${product.stock <= 5 ? "text-flame" : "text-ink"}`}>
+                      <td
+                        className={`px-4 py-3 font-semibold ${
+                          product.stock <= (product.lowStockThreshold ?? 5) ? "text-flame" : "text-ink"
+                        }`}
+                      >
                         {product.stock}
                       </td>
                       <td className="px-4 py-3 text-ink">{product.unitsSold}</td>

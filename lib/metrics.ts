@@ -1,6 +1,10 @@
 import { formatTaka } from "@/lib/format";
 import type { AdminOrder, AdminProduct, DashboardState } from "@/lib/types";
 
+export function isLowStock(product: AdminProduct) {
+  return product.stock > 0 && product.stock <= (product.lowStockThreshold ?? 5);
+}
+
 export function orderStatusCounts(orders: AdminOrder[]) {
   const counts = {
     All: orders.length,
@@ -60,7 +64,7 @@ export function overviewStats(state: DashboardState) {
 export function alertSummary(orders: AdminOrder[], products: AdminProduct[]) {
   const ready = orders.filter((o) => o.status === "Shipped").length;
   const awaiting = orders.filter((o) => o.status === "New Order" || o.status === "In Process").length;
-  const lowStock = products.filter((p) => p.stock > 0 && p.stock <= 5).length;
+  const lowStock = products.filter(isLowStock).length;
   return [
     {
       title: `${String(ready).padStart(2, "0")} Orders Ready to Ship`,

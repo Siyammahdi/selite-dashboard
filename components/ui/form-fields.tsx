@@ -74,18 +74,28 @@ type TextAreaProps = {
   error?: string;
   rows?: number;
   className?: string;
+  /** Stretch to fill the height of a flex parent instead of sizing by `rows`. */
+  fill?: boolean;
 };
 
-export function TextArea({ label, value, onChange, required, error, rows = 4, className }: TextAreaProps) {
+export function TextArea({ label, value, onChange, required, error, rows = 4, className, fill }: TextAreaProps) {
   const id = useId();
   return (
-    <FieldShell label={label} required={required} error={error} className={className} htmlFor={id}>
+    <FieldShell
+      label={label}
+      required={required}
+      error={error}
+      className={`${fill ? "min-h-0 flex-1" : ""} ${className ?? ""}`}
+      htmlFor={id}
+    >
       <textarea
         id={id}
         value={value}
-        rows={rows}
+        rows={fill ? undefined : rows}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full resize-y rounded border border-stone bg-white px-3 py-2 text-sm text-ink outline-none transition focus:border-forest"
+        className={`w-full rounded border border-stone bg-white px-3 py-2 text-sm text-ink outline-none transition focus:border-forest ${
+          fill ? "h-full flex-1 resize-none" : "resize-y"
+        }`}
       />
     </FieldShell>
   );

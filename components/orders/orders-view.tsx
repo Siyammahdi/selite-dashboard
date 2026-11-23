@@ -84,7 +84,7 @@ export function OrdersView() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-[1131px] flex-col gap-4">
+    <div className="flex w-full flex-col gap-4">
       <PageHeader title="All Orders" actions={[{ label: "Create New Order", onClick: () => setCreateOpen(true) }]} />
 
       <section className="flex flex-col gap-4">

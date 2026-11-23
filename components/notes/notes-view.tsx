@@ -46,7 +46,7 @@ export function NotesView() {
   }, [notes, query]);
 
   return (
-    <div className="mx-auto flex w-full max-w-[1132px] flex-col gap-4">
+    <div className="flex w-full flex-col gap-4">
       <PageHeader
         title="Notes"
         actions={[

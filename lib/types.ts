@@ -12,6 +12,14 @@ export type PaymentStatus = "Unpaid" | "Partial" | "Paid";
 export type PaymentMethod = "COD" | "bKash" | "Nagad" | "Card" | "Bank Transfer";
 export type OrderChannel = "Website" | "Facebook" | "Instagram" | "Phone" | "Walk-in";
 
+export type ProductReview = {
+  id: string;
+  name: string;
+  profession: string;
+  rating: number;
+  image: string;
+};
+
 export type AdminProduct = {
   id: number;
   slug: string;
@@ -19,15 +27,19 @@ export type AdminProduct = {
   category: CategorySlug;
   categoryLabel: string;
   image: string;
+  images?: string[];
   code: string;
   stock: number;
+  lowStockThreshold?: number;
   unitsSold: number;
   sellingPrice: number;
   purchasePrice: number;
   active: boolean;
   rating: number;
   description?: string;
-  reviewPolicy?: string;
+  metaDescription?: string;
+  internalNotes?: string;
+  reviews?: ProductReview[];
   returnPolicy?: string;
 };
 

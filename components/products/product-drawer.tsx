@@ -1,14 +1,15 @@
 "use client";
 
-import Image from "next/image";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { categories, getCatalogProduct, getCategoryName, type CategorySlug } from "@/lib/catalog";
 import { Drawer, DrawerActions } from "@/components/ui/drawer";
-import { NumberInput, SelectField, TextArea, TextInput } from "@/components/ui/form-fields";
+import { FieldShell, NumberInput, SelectField, TextArea, TextInput } from "@/components/ui/form-fields";
+import { CloseIcon, ImageUploadIcon, PlusIcon, StarIcon, TrashIcon } from "@/components/ui/icons";
+import { Stepper } from "@/components/ui/stepper";
 import { parseMoney, slugify } from "@/lib/form-utils";
 import { addProduct, deleteProduct, updateProduct } from "@/lib/stores/dashboard";
 import { pushToast } from "@/lib/stores/ui";
-import type { AdminProduct } from "@/lib/types";
+import type { AdminProduct, ProductReview } from "@/lib/types";
 
 const STEPS = ["Details", "Description", "Review", "Return"] as const;
 
@@ -24,15 +25,17 @@ function productDefaults(product?: AdminProduct | null) {
     return {
       name: product.name,
       category: product.category,
+      metaDescription: product.metaDescription ?? "",
       sellingPrice: String(product.sellingPrice),
       purchasePrice: String(product.purchasePrice),
       stock: String(product.stock),
+      lowStockThreshold: String(product.lowStockThreshold ?? 5),
+      active: product.active,
+      images: product.images && product.images.length > 0 ? product.images : [product.image],
+      internalNotes: product.internalNotes ?? "",
       code: product.code,
-      image: product.image,
       description: product.description ?? catalog?.description.join("\n\n") ?? "",
-      reviewPolicy:
-        product.reviewPolicy ??
-        "Customers can leave a review after delivery. Ratings sync from the storefront catalog.",
+      reviews: product.reviews ?? [],
       returnPolicy:
         product.returnPolicy ??
         "Unused items can be returned within 7 days of delivery with original packaging.",
@@ -41,15 +44,139 @@ function productDefaults(product?: AdminProduct | null) {
   return {
     name: "",
     category: "womens-bags" as CategorySlug,
+    metaDescription: "",
     sellingPrice: "",
     purchasePrice: "",
     stock: "10",
+    lowStockThreshold: "5",
+    active: true,
+    images: ["/images/product-thumb-1.png"],
+    internalNotes: "",
     code: `NEW${Date.now().toString().slice(-4)}`,
-    image: "/images/product-thumb-1.png",
     description: "",
-    reviewPolicy: "Customers can leave a review after delivery.",
+    reviews: [] as ProductReview[],
     returnPolicy: "Unused items can be returned within 7 days of delivery.",
   };
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") resolve(reader.result);
+      else reject(new Error("Could not read file"));
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function ImageTile({
+  src,
+  onPick,
+  onRemove,
+  label = "Upload Image",
+}: {
+  src?: string;
+  onPick: (dataUrl: string) => void;
+  onRemove?: () => void;
+  label?: string;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    onPick(await readFileAsDataUrl(file));
+  }
+
+  if (src) {
+    return (
+      <div className="group relative aspect-[105/86] overflow-hidden rounded-lg border border-stone bg-stone">
+        {/* eslint-disable-next-line @next/next/no-img-element -- locally uploaded data: URLs, not optimizable assets */}
+        <img src={src} alt="" className="size-full object-cover" />
+        {onRemove ? (
+          <button
+            type="button"
+            onClick={onRemove}
+            aria-label="Remove image"
+            className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-full bg-ink/70 text-white opacity-0 transition group-hover:opacity-100"
+          >
+            <CloseIcon className="size-2.5" />
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => inputRef.current?.click()}
+      className="flex aspect-[105/86] flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-stone bg-white text-ink/60 transition hover:border-forest hover:text-forest"
+    >
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+      <ImageUploadIcon className="size-5" />
+      <span className="text-xs">{label}</span>
+    </button>
+  );
+}
+
+function RatingInput({ value, onChange }: { value: number; onChange: (value: number) => void }) {
+  return (
+    <div className="flex h-[42px] items-center gap-1 rounded border border-stone bg-white px-3">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          type="button"
+          onClick={() => onChange(n)}
+          aria-label={`${n} star${n > 1 ? "s" : ""}`}
+          className={n <= value ? "text-flame" : "text-stone"}
+        >
+          <StarIcon className="size-4" filled={n <= value} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ReviewCard({
+  review,
+  onChange,
+  onRemove,
+}: {
+  review: ProductReview;
+  onChange: (patch: Partial<ProductReview>) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2 rounded-lg bg-[#fcf2e3] p-2">
+      <TextInput label="Reviewer name" value={review.name} onChange={(v) => onChange({ name: v })} />
+      <div className="grid grid-cols-2 gap-4">
+        <TextInput label="Profession" value={review.profession} onChange={(v) => onChange({ profession: v })} />
+        <FieldShell label="Rating">
+          <RatingInput value={review.rating} onChange={(v) => onChange({ rating: v })} />
+        </FieldShell>
+      </div>
+      <div className="flex items-end justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <span className="text-sm text-ink">Person Image</span>
+          <div className="w-[106px]">
+            <ImageTile src={review.image || undefined} onPick={(dataUrl) => onChange({ image: dataUrl })} />
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label="Remove review"
+          className="flex size-7 shrink-0 items-center justify-center rounded text-ink/60 transition hover:bg-white hover:text-[#d00036]"
+        >
+          <TrashIcon className="size-4" />
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export function ProductDrawer({ open, product, onClose }: ProductDrawerProps) {
@@ -66,16 +193,19 @@ function ProductDrawerForm({
 }) {
   const editing = Boolean(product);
   const initial = productDefaults(product);
-  const [step, setStep] = useState<(typeof STEPS)[number]>("Details");
+  const [stepIndex, setStepIndex] = useState(0);
   const [name, setName] = useState(initial.name);
   const [category, setCategory] = useState<CategorySlug>(initial.category);
+  const [metaDescription, setMetaDescription] = useState(initial.metaDescription);
   const [sellingPrice, setSellingPrice] = useState(initial.sellingPrice);
   const [purchasePrice, setPurchasePrice] = useState(initial.purchasePrice);
   const [stock, setStock] = useState(initial.stock);
-  const [code, setCode] = useState(initial.code);
-  const [image, setImage] = useState(initial.image);
+  const [lowStockThreshold, setLowStockThreshold] = useState(initial.lowStockThreshold);
+  const [active, setActive] = useState(initial.active);
+  const [images, setImages] = useState<string[]>(initial.images);
+  const [internalNotes, setInternalNotes] = useState(initial.internalNotes);
   const [description, setDescription] = useState(initial.description);
-  const [reviewPolicy, setReviewPolicy] = useState(initial.reviewPolicy);
+  const [reviews, setReviews] = useState<ProductReview[]>(initial.reviews);
   const [returnPolicy, setReturnPolicy] = useState(initial.returnPolicy);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -85,14 +215,25 @@ function ProductDrawerForm({
     if (!parseMoney(sellingPrice)) next.sellingPrice = "Enter selling price";
     if (!parseMoney(purchasePrice) && purchasePrice !== "0") next.purchasePrice = "Enter purchase price";
     if (stock === "" || Number.isNaN(Number(stock))) next.stock = "Enter stock quantity";
-    if (!code.trim()) next.code = "Product code is required";
     setErrors(next);
     return Object.keys(next).length === 0;
   }
 
+  function updateReview(id: string, patch: Partial<ProductReview>) {
+    setReviews((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  }
+
+  function addReview() {
+    setReviews((prev) => [...prev, { id: `review-${Date.now()}`, name: "", profession: "", rating: 5, image: "" }]);
+  }
+
+  function removeReview(id: string) {
+    setReviews((prev) => prev.filter((r) => r.id !== id));
+  }
+
   function handleSave() {
     if (!validateDetails()) {
-      setStep("Details");
+      setStepIndex(0);
       pushToast("Complete product details", "error");
       return;
     }
@@ -103,16 +244,20 @@ function ProductDrawerForm({
       name: name.trim(),
       category,
       categoryLabel: getCategoryName(category),
-      image,
-      code: code.trim(),
+      image: images[0] ?? "/images/product-thumb-1.png",
+      images,
+      code: product?.code ?? initial.code,
       stock: Math.max(0, Math.floor(parseMoney(stock))),
+      lowStockThreshold: Math.max(0, Math.floor(parseMoney(lowStockThreshold)) || 5),
       unitsSold: product?.unitsSold ?? 0,
       sellingPrice: parseMoney(sellingPrice),
       purchasePrice: parseMoney(purchasePrice),
-      active: product?.active ?? true,
+      active,
       rating: product?.rating ?? 5,
       description: description.trim(),
-      reviewPolicy: reviewPolicy.trim(),
+      metaDescription: metaDescription.trim(),
+      internalNotes: internalNotes.trim(),
+      reviews,
       returnPolicy: returnPolicy.trim(),
     };
 
@@ -134,6 +279,8 @@ function ProductDrawerForm({
     onClose();
   }
 
+  const step = STEPS[stepIndex];
+
   return (
     <Drawer
       open
@@ -148,81 +295,116 @@ function ProductDrawerForm({
         />
       }
     >
-      <div className="mb-3 flex gap-1 overflow-x-auto">
-        {STEPS.map((item) => (
-          <button
-            key={item}
-            type="button"
-            onClick={() => setStep(item)}
-            className={`rounded-md px-3 py-1.5 text-sm transition ${
-              step === item ? "bg-forest text-lime" : "bg-snow text-ink hover:bg-stone/40"
-            }`}
-          >
-            {item}
-          </button>
-        ))}
-      </div>
-
-      {step === "Details" ? (
-        <div className="flex flex-col gap-2 pb-4">
-          <TextInput label="Product name" required value={name} onChange={setName} error={errors.name} />
-          <SelectField
-            label="Category"
-            value={category}
-            onChange={(v) => setCategory(v as CategorySlug)}
-            options={categories.map((c) => ({ value: c.slug, label: c.name }))}
-          />
-          <div className="grid grid-cols-2 gap-2">
-            <NumberInput
-              label="Selling price"
-              required
-              min={0}
-              value={sellingPrice}
-              onChange={setSellingPrice}
-              error={errors.sellingPrice}
-            />
-            <NumberInput
-              label="Purchase price"
-              required
-              min={0}
-              value={purchasePrice}
-              onChange={setPurchasePrice}
-              error={errors.purchasePrice}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <NumberInput label="Stock" required min={0} value={stock} onChange={setStock} error={errors.stock} />
-            <TextInput label="Product code" required value={code} onChange={setCode} error={errors.code} />
-          </div>
-          <TextInput
-            label="Image path"
-            value={image}
-            onChange={setImage}
-            placeholder="/products/308-0.webp"
-          />
-          {image ? (
-            <Image
-              src={image}
-              alt=""
-              width={96}
-              height={96}
-              className="mt-1 h-24 w-24 rounded-lg border border-stone object-cover"
-            />
-          ) : null}
+      <div className="flex h-full flex-col">
+        <div className="pb-4">
+          <Stepper steps={STEPS} current={stepIndex} onSelect={setStepIndex} />
         </div>
-      ) : null}
 
-      {step === "Description" ? (
-        <TextArea label="Description" rows={12} value={description} onChange={setDescription} />
-      ) : null}
+        {step === "Details" ? (
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="flex flex-col gap-2 pb-4">
+              <TextInput label="Product Name" value={name} onChange={setName} error={errors.name} />
+              <TextArea label="Meta Description" rows={3} value={metaDescription} onChange={setMetaDescription} />
+              <SelectField
+                label="Category"
+                value={category}
+                onChange={(v) => setCategory(v as CategorySlug)}
+                options={categories.map((c) => ({ value: c.slug, label: c.name }))}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <NumberInput
+                  label="Selling Price"
+                  min={0}
+                  value={sellingPrice}
+                  onChange={setSellingPrice}
+                  error={errors.sellingPrice}
+                />
+                <NumberInput
+                  label="Purchase Price"
+                  min={0}
+                  value={purchasePrice}
+                  onChange={setPurchasePrice}
+                  error={errors.purchasePrice}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <NumberInput
+                  label="Available Stock"
+                  min={0}
+                  value={stock}
+                  onChange={setStock}
+                  error={errors.stock}
+                />
+                <NumberInput label="Low Stock Count" min={0} value={lowStockThreshold} onChange={setLowStockThreshold} />
+              </div>
+              <SelectField
+                label="Activity Status"
+                value={active ? "active" : "inactive"}
+                onChange={(v) => setActive(v === "active")}
+                options={[
+                  { value: "active", label: "Active" },
+                  { value: "inactive", label: "Inactive" },
+                ]}
+              />
+              <FieldShell label="Product Image">
+                <div className="grid grid-cols-4 gap-2">
+                  {images.map((src, index) => (
+                    <ImageTile
+                      key={`${src}-${index}`}
+                      src={src}
+                      onPick={() => {}}
+                      onRemove={
+                        images.length > 1
+                          ? () => setImages((prev) => prev.filter((_, i) => i !== index))
+                          : undefined
+                      }
+                    />
+                  ))}
+                  <ImageTile onPick={(dataUrl) => setImages((prev) => [...prev, dataUrl])} />
+                </div>
+              </FieldShell>
+              <TextArea label="Internal notes" rows={3} value={internalNotes} onChange={setInternalNotes} />
+            </div>
+          </div>
+        ) : null}
 
-      {step === "Review" ? (
-        <TextArea label="Review policy" rows={10} value={reviewPolicy} onChange={setReviewPolicy} />
-      ) : null}
+        {step === "Description" ? (
+          <TextArea label="Description" value={description} onChange={setDescription} fill />
+        ) : null}
 
-      {step === "Return" ? (
-        <TextArea label="Return policy" rows={10} value={returnPolicy} onChange={setReturnPolicy} />
-      ) : null}
+        {step === "Review" ? (
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="flex flex-col gap-3 pb-4">
+              {reviews.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-stone p-4 text-center text-sm text-ink/60">
+                  No reviews added yet.
+                </p>
+              ) : (
+                reviews.map((review) => (
+                  <ReviewCard
+                    key={review.id}
+                    review={review}
+                    onChange={(patch) => updateReview(review.id, patch)}
+                    onRemove={() => removeReview(review.id)}
+                  />
+                ))
+              )}
+              <button
+                type="button"
+                onClick={addReview}
+                className="flex items-center gap-2 self-start rounded-md px-1 py-1 text-sm text-ink transition hover:text-forest"
+              >
+                <PlusIcon className="size-2.5" />
+                Add New
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {step === "Return" ? (
+          <TextArea label="Return Policy" value={returnPolicy} onChange={setReturnPolicy} fill />
+        ) : null}
+      </div>
     </Drawer>
   );
 }
