@@ -4,17 +4,15 @@ import Image from "next/image";
 import { pushToast } from "@/lib/stores/ui";
 
 type ToolbarActionsProps = {
-  items?: Array<"date" | "filter" | "export">;
+  items?: Array<"date" | "export">;
   dateLabel?: string;
-  onFilter?: () => void;
   onExport?: () => void;
   onDate?: () => void;
 };
 
 export function ToolbarActions({
-  items = ["filter", "export"],
+  items = ["export"],
   dateLabel = "Last 30 days",
-  onFilter,
   onExport,
   onDate,
 }: ToolbarActionsProps) {
@@ -31,19 +29,6 @@ export function ToolbarActions({
         >
           {dateLabel}
           <Image src="/icons/calendar.svg" alt="" width={24} height={24} className="size-6" />
-        </button>
-      ) : null}
-      {items.includes("filter") ? (
-        <button
-          type="button"
-          onClick={() => {
-            onFilter?.();
-            if (!onFilter) pushToast("Use the status tabs to filter", "info");
-          }}
-          className="inline-flex items-center gap-2 transition hover:text-forest"
-        >
-          Filter
-          <Image src="/icons/filter.svg" alt="" width={24} height={24} className="size-6" />
         </button>
       ) : null}
       {items.includes("export") ? (

@@ -10,6 +10,20 @@ export function PlusIcon({ className = "size-2.5" }: IconProps) {
   );
 }
 
+export function FilterIcon({ className = "size-4" }: IconProps) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden className={className}>
+      <path
+        d="M2 3.5h12M4.5 8h7M6.75 12.5h2.5"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function ArrowRightIcon({ className = "size-3" }: IconProps) {
   return (
     <svg viewBox="0 0 12 10" fill="none" aria-hidden className={className}>
@@ -46,6 +60,35 @@ export function ChevronDownIcon({ className = "size-3" }: IconProps) {
   return (
     <svg viewBox="0 0 12 8" fill="none" aria-hidden className={className}>
       <path d="M1 1.5 6 6.5 11 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function EyeIcon({ className = "size-5" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
+      <path
+        d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+export function EyeOffIcon({ className = "size-5" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
+      <path
+        d="M3 3l18 18M10.6 10.65a3 3 0 0 0 4.24 4.24M6.6 6.73C4.4 8.16 2 12 2 12s3.6 7 10 7c1.98 0 3.65-.52 5-1.25M9.9 4.24A10.6 10.6 0 0 1 12 5c6.4 0 10 7 10 7a15.6 15.6 0 0 1-3.03 3.9"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

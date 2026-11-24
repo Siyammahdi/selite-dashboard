@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDownIcon } from "@/components/ui/icons";
+import { ChevronDownIcon, EyeIcon, EyeOffIcon } from "@/components/ui/icons";
 
 export const fieldClass =
   "h-[42px] w-full rounded border border-stone bg-white px-3 text-sm text-ink outline-none transition placeholder:text-ink/35 focus:border-forest";
@@ -97,6 +97,44 @@ export function TextArea({ label, value, onChange, required, error, rows = 4, cl
           fill ? "h-full flex-1 resize-none" : "resize-y"
         }`}
       />
+    </FieldShell>
+  );
+}
+
+type PasswordInputProps = {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+  error?: string;
+  placeholder?: string;
+  className?: string;
+};
+
+export function PasswordInput({ label, value, onChange, required, error, placeholder, className }: PasswordInputProps) {
+  const id = useId();
+  const [visible, setVisible] = useState(false);
+  return (
+    <FieldShell label={label} required={required} error={error} className={className} htmlFor={id}>
+      <div className="relative">
+        <input
+          id={id}
+          type={visible ? "text" : "password"}
+          value={value}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          className={`${fieldClass} pr-10`}
+        />
+        <button
+          type="button"
+          onClick={() => setVisible((v) => !v)}
+          aria-label={visible ? "Hide password" : "Show password"}
+          aria-pressed={visible}
+          className="absolute top-1/2 right-2.5 flex size-6 -translate-y-1/2 items-center justify-center text-ink/45 transition hover:text-ink"
+        >
+          {visible ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+        </button>
+      </div>
     </FieldShell>
   );
 }

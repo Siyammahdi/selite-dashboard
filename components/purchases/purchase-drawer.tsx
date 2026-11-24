@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { categories } from "@/lib/catalog";
 import { Drawer, DrawerActions } from "@/components/ui/drawer";
 import {
   DateInput,
@@ -23,14 +22,7 @@ import {
 import { pushToast } from "@/lib/stores/ui";
 import type { AdminProduct, Purchase } from "@/lib/types";
 
-const BASE_PURCHASE_CATEGORIES = [
-  "Product Purchase",
-  "Marketing",
-  "Accessories",
-  "Others",
-  "Salary",
-  ...categories.map((c) => c.name),
-];
+const BASE_PURCHASE_CATEGORIES = ["Product Purchase", "Marketing", "Accessories", "Others", "Salary"];
 
 type PurchaseDrawerProps = {
   open: boolean;
@@ -90,7 +82,7 @@ function PurchaseDrawerForm({
   purchase?: Purchase | null;
   onClose: () => void;
 }) {
-  const { products } = useDashboard();
+  const { products, categories } = useDashboard();
   const editing = Boolean(purchase);
   const initial = purchaseDefaults(kind, products, purchase);
   const [name, setName] = useState(initial.name);
@@ -107,8 +99,12 @@ function PurchaseDrawerForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const categoryOptions = useMemo(
-    () => [...new Set([...BASE_PURCHASE_CATEGORIES, ...extraCategories])].map((c) => ({ value: c, label: c })),
-    [extraCategories],
+    () =>
+      [...new Set([...BASE_PURCHASE_CATEGORIES, ...categories.map((c) => c.name), ...extraCategories])].map((c) => ({
+        value: c,
+        label: c,
+      })),
+    [categories, extraCategories],
   );
 
   const productOptions = useMemo(
@@ -190,6 +186,7 @@ function PurchaseDrawerForm({
           onSave={handleSave}
           onCancel={onClose}
           onDelete={editing ? handleDelete : undefined}
+          saveLabel={editing ? "Save Change" : "Add Purchase"}
           deleteLabel="Delete"
         />
       }

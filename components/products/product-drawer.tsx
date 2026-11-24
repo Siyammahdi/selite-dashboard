@@ -1,13 +1,15 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { categories, getCatalogProduct, getCategoryName, type CategorySlug } from "@/lib/catalog";
-import { Drawer, DrawerActions } from "@/components/ui/drawer";
+import { useState } from "react";
+import { getCatalogProduct } from "@/lib/catalog";
+import { CategoryDrawer } from "@/components/products/category-drawer";
+import { Drawer } from "@/components/ui/drawer";
 import { FieldShell, NumberInput, SelectField, TextArea, TextInput } from "@/components/ui/form-fields";
-import { CloseIcon, ImageUploadIcon, PlusIcon, StarIcon, TrashIcon } from "@/components/ui/icons";
+import { ImageTile } from "@/components/ui/image-tile";
+import { PlusIcon, StarIcon, TrashIcon } from "@/components/ui/icons";
 import { Stepper } from "@/components/ui/stepper";
 import { parseMoney, slugify } from "@/lib/form-utils";
-import { addProduct, deleteProduct, updateProduct } from "@/lib/stores/dashboard";
+import { addProduct, deleteProduct, updateProduct, useDashboard } from "@/lib/stores/dashboard";
 import { pushToast } from "@/lib/stores/ui";
 import type { AdminProduct, ProductReview } from "@/lib/types";
 
@@ -19,7 +21,7 @@ type ProductDrawerProps = {
   onClose: () => void;
 };
 
-function productDefaults(product?: AdminProduct | null) {
+function productDefaults(product?: AdminProduct | null, defaultCategory = "") {
   if (product) {
     const catalog = getCatalogProduct(product.id);
     return {
@@ -43,7 +45,7 @@ function productDefaults(product?: AdminProduct | null) {
   }
   return {
     name: "",
-    category: "womens-bags" as CategorySlug,
+    category: defaultCategory,
     metaDescription: "",
     sellingPrice: "",
     purchasePrice: "",
@@ -57,70 +59,6 @@ function productDefaults(product?: AdminProduct | null) {
     reviews: [] as ProductReview[],
     returnPolicy: "Unused items can be returned within 7 days of delivery.",
   };
-}
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") resolve(reader.result);
-      else reject(new Error("Could not read file"));
-    };
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
-
-function ImageTile({
-  src,
-  onPick,
-  onRemove,
-  label = "Upload Image",
-}: {
-  src?: string;
-  onPick: (dataUrl: string) => void;
-  onRemove?: () => void;
-  label?: string;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    onPick(await readFileAsDataUrl(file));
-  }
-
-  if (src) {
-    return (
-      <div className="group relative aspect-[105/86] overflow-hidden rounded-lg border border-stone bg-stone">
-        {/* eslint-disable-next-line @next/next/no-img-element -- locally uploaded data: URLs, not optimizable assets */}
-        <img src={src} alt="" className="size-full object-cover" />
-        {onRemove ? (
-          <button
-            type="button"
-            onClick={onRemove}
-            aria-label="Remove image"
-            className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-full bg-ink/70 text-white opacity-0 transition group-hover:opacity-100"
-          >
-            <CloseIcon className="size-2.5" />
-          </button>
-        ) : null}
-      </div>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={() => inputRef.current?.click()}
-      className="flex aspect-[105/86] flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-stone bg-white text-ink/60 transition hover:border-forest hover:text-forest"
-    >
-      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
-      <ImageUploadIcon className="size-5" />
-      <span className="text-xs">{label}</span>
-    </button>
-  );
 }
 
 function RatingInput({ value, onChange }: { value: number; onChange: (value: number) => void }) {
@@ -191,11 +129,13 @@ function ProductDrawerForm({
   product?: AdminProduct | null;
   onClose: () => void;
 }) {
+  const { categories } = useDashboard();
   const editing = Boolean(product);
-  const initial = productDefaults(product);
+  const initial = productDefaults(product, categories[0]?.slug ?? "");
   const [stepIndex, setStepIndex] = useState(0);
   const [name, setName] = useState(initial.name);
-  const [category, setCategory] = useState<CategorySlug>(initial.category);
+  const [category, setCategory] = useState(initial.category);
+  const [categoryDrawerOpen, setCategoryDrawerOpen] = useState(false);
   const [metaDescription, setMetaDescription] = useState(initial.metaDescription);
   const [sellingPrice, setSellingPrice] = useState(initial.sellingPrice);
   const [purchasePrice, setPurchasePrice] = useState(initial.purchasePrice);
@@ -243,7 +183,7 @@ function ProductDrawerForm({
       slug: product?.slug ?? (slugify(name) || `product-${Date.now()}`),
       name: name.trim(),
       category,
-      categoryLabel: getCategoryName(category),
+      categoryLabel: categories.find((c) => c.slug === category)?.name ?? category,
       image: images[0] ?? "/images/product-thumb-1.png",
       images,
       code: product?.code ?? initial.code,
@@ -280,6 +220,15 @@ function ProductDrawerForm({
   }
 
   const step = STEPS[stepIndex];
+  const isLastStep = stepIndex === STEPS.length - 1;
+
+  function handleNext() {
+    if (stepIndex === 0 && !validateDetails()) {
+      pushToast("Complete product details", "error");
+      return;
+    }
+    setStepIndex((i) => Math.min(STEPS.length - 1, i + 1));
+  }
 
   return (
     <Drawer
@@ -287,12 +236,33 @@ function ProductDrawerForm({
       title={editing ? "Edit Product" : "Add New Item"}
       onClose={onClose}
       footer={
-        <DrawerActions
-          onSave={handleSave}
-          onCancel={onClose}
-          onDelete={editing ? handleDelete : undefined}
-          deleteLabel="Delete"
-        />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={isLastStep ? handleSave : handleNext}
+              className="rounded-lg bg-forest px-4 py-2.5 text-sm font-semibold text-lime transition hover:bg-ink"
+            >
+              {isLastStep ? (editing ? "Save Change" : "Add Product") : "Next"}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg px-[29px] py-2.5 text-sm font-semibold text-ink transition hover:bg-snow"
+            >
+              Cancel
+            </button>
+          </div>
+          {editing ? (
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="rounded-lg border-[0.5px] border-[#d00036] bg-[#f9e4ea] px-8 py-2.5 text-sm font-semibold text-[#d00036] transition hover:bg-[#f3d0da]"
+            >
+              Delete
+            </button>
+          ) : null}
+        </div>
       }
     >
       <div className="flex h-full flex-col">
@@ -308,8 +278,9 @@ function ProductDrawerForm({
               <SelectField
                 label="Category"
                 value={category}
-                onChange={(v) => setCategory(v as CategorySlug)}
+                onChange={setCategory}
                 options={categories.map((c) => ({ value: c.slug, label: c.name }))}
+                footerAction={{ label: "Add New Category", onClick: () => setCategoryDrawerOpen(true) }}
               />
               <div className="grid grid-cols-2 gap-4">
                 <NumberInput
@@ -352,12 +323,8 @@ function ProductDrawerForm({
                     <ImageTile
                       key={`${src}-${index}`}
                       src={src}
-                      onPick={() => {}}
-                      onRemove={
-                        images.length > 1
-                          ? () => setImages((prev) => prev.filter((_, i) => i !== index))
-                          : undefined
-                      }
+                      onPick={(dataUrl) => setImages((prev) => prev.map((s, i) => (i === index ? dataUrl : s)))}
+                      onRemove={() => setImages((prev) => prev.filter((_, i) => i !== index))}
                     />
                   ))}
                   <ImageTile onPick={(dataUrl) => setImages((prev) => [...prev, dataUrl])} />
@@ -405,6 +372,12 @@ function ProductDrawerForm({
           <TextArea label="Return Policy" value={returnPolicy} onChange={setReturnPolicy} fill />
         ) : null}
       </div>
+
+      <CategoryDrawer
+        open={categoryDrawerOpen}
+        onClose={() => setCategoryDrawerOpen(false)}
+        onCreated={(slug) => setCategory(slug)}
+      />
     </Drawer>
   );
 }

@@ -59,6 +59,7 @@ type OrderDrawerProps = {
   open: boolean;
   order?: AdminOrder | null;
   onClose: () => void;
+  /** Fires only when an order is actually created/updated, not on Cancel. */
   onSaved?: (order: AdminOrder) => void;
 };
 
@@ -225,6 +226,7 @@ function OrderDrawerForm({
           onSave={handleSave}
           onCancel={onClose}
           onDelete={editing ? handleDelete : undefined}
+          saveLabel={editing ? "Save Change" : "Create Order"}
           deleteLabel="Delete Order"
         />
       }
@@ -246,8 +248,9 @@ function OrderDrawerForm({
 
         <div className="flex flex-col gap-2 rounded-md border border-stone/70 p-2">
           {lines.map((line, index) => (
-            <div key={line.key} className="grid grid-cols-[1fr_96px_auto] items-end gap-2">
+            <div key={line.key} className="grid grid-cols-[minmax(0,1fr)_96px_auto] items-end gap-2">
               <SelectField
+                className="min-w-0"
                 label={index === 0 ? "Item name" : `Item ${index + 1}`}
                 value={line.productId}
                 onChange={(productId) =>

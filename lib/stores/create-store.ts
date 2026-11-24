@@ -32,7 +32,13 @@ export function createStore<T>(initial: T, storageKey?: string) {
     try {
       const raw = window.localStorage.getItem(storageKey);
       if (!raw) return false;
-      state = JSON.parse(raw) as T;
+      const parsed = JSON.parse(raw) as T;
+      // Merge over the seed defaults so fields added after a user's data was
+      // last saved (e.g. a new top-level collection) don't come back undefined.
+      state =
+        parsed && typeof parsed === "object" && !Array.isArray(parsed)
+          ? { ...initial, ...parsed }
+          : parsed;
       return true;
     } catch {
       return false;

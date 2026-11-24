@@ -194,21 +194,9 @@ export function OrdersView() {
         )}
       </section>
 
-      <OrderDrawer
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onSaved={(order) => updateQuery({ status: order.status, page: 1 })}
-      />
+      <OrderDrawer open={createOpen} onClose={() => setCreateOpen(false)} />
 
-      <OrderDrawer
-        open={!!selected}
-        order={selected}
-        onClose={() => setSelectedId(null)}
-        onSaved={(order) => {
-          setSelectedId(null);
-          updateQuery({ status: order.status, page: 1 });
-        }}
-      />
+      <OrderDrawer open={!!selected} order={selected} onClose={() => setSelectedId(null)} />
     </div>
   );
 }

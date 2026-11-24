@@ -177,6 +177,7 @@ function ExpenseDrawerForm({
           onSave={handleSave}
           onCancel={onClose}
           onDelete={editing ? handleDelete : undefined}
+          saveLabel={editing ? "Save Change" : isExpense ? "Add Expense" : "Add Invest"}
           deleteLabel="Delete"
         />
       }

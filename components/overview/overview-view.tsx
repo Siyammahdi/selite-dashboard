@@ -149,7 +149,7 @@ export function OverviewView() {
       <OrderDrawer
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        onSaved={() => router.push("/orders?status=New%20Order")}
+        onSaved={() => router.push("/orders")}
       />
     </div>
   );

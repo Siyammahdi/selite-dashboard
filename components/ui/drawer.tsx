@@ -51,7 +51,7 @@ export function Drawer({ open, title, onClose, children, footer }: DrawerProps) 
             <CloseIcon />
           </button>
         </div>
-        <div className="no-scrollbar flex-1 overflow-y-auto px-7 py-2">{children}</div>
+        <div className="no-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-7 py-2">{children}</div>
         {footer ? <div className="border-t border-stone/60 px-7 py-4">{footer}</div> : null}
       </aside>
     </div>

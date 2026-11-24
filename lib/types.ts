@@ -1,4 +1,11 @@
-import type { CategorySlug } from "@/lib/catalog";
+export type ProductCategory = {
+  slug: string;
+  name: string;
+  description?: string;
+  image?: string;
+  active: boolean;
+  internalNotes?: string;
+};
 
 export type OrderStatus =
   | "New Order"
@@ -24,7 +31,7 @@ export type AdminProduct = {
   id: number;
   slug: string;
   name: string;
-  category: CategorySlug;
+  category: string;
   categoryLabel: string;
   image: string;
   images?: string[];
@@ -124,19 +131,35 @@ export type Note = {
   pinned: boolean;
 };
 
-export type Role = {
+export const ACCESS_MODULES = ["orders", "products", "finance", "purchases", "notes"] as const;
+export type AccessModule = (typeof ACCESS_MODULES)[number];
+
+export const ACCESS_MODULE_LABELS: Record<AccessModule, string> = {
+  orders: "Orders",
+  products: "Products",
+  finance: "Finance",
+  purchases: "Purchases",
+  notes: "Notes",
+};
+
+export type TeamMember = {
   id: string;
   name: string;
-  permissions: string[];
-  members: number;
+  email: string;
+  phone: string;
+  password: string;
+  /** Which sections this user can access. All modules present == full access. */
+  access: AccessModule[];
+  active: boolean;
 };
 
 export type DashboardState = {
   products: AdminProduct[];
+  categories: ProductCategory[];
   orders: AdminOrder[];
   expenses: Expense[];
   investments: Investment[];
   purchases: Purchase[];
   notes: Note[];
-  roles: Role[];
+  teamMembers: TeamMember[];
 };

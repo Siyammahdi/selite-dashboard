@@ -10,8 +10,9 @@ import type {
   Investment,
   Note,
   OrderStatus,
+  ProductCategory,
   Purchase,
-  Role,
+  TeamMember,
 } from "@/lib/types";
 
 const STORAGE_KEY = "selite-dashboard-v2";
@@ -52,6 +53,28 @@ export function updateOrderStatus(id: string, status: OrderStatus) {
   dashboardStore.set((s) => ({
     ...s,
     orders: s.orders.map((o) => (o.id === id ? { ...o, status } : o)),
+  }));
+}
+
+export function addCategory(category: ProductCategory) {
+  dashboardStore.set((s) => ({ ...s, categories: [category, ...s.categories] }));
+}
+
+export function updateCategory(slug: string, patch: Partial<ProductCategory>) {
+  dashboardStore.set((s) => ({
+    ...s,
+    categories: s.categories.map((c) => (c.slug === slug ? { ...c, ...patch } : c)),
+    products:
+      patch.name && patch.name !== s.categories.find((c) => c.slug === slug)?.name
+        ? s.products.map((p) => (p.category === slug ? { ...p, categoryLabel: patch.name! } : p))
+        : s.products,
+  }));
+}
+
+export function deleteCategory(slug: string) {
+  dashboardStore.set((s) => ({
+    ...s,
+    categories: s.categories.filter((c) => c.slug !== slug),
   }));
 }
 
@@ -153,20 +176,20 @@ export function deleteNote(id: string) {
   dashboardStore.set((s) => ({ ...s, notes: s.notes.filter((n) => n.id !== id) }));
 }
 
-export function addRole(role: Role) {
-  dashboardStore.set((s) => ({ ...s, roles: [role, ...s.roles] }));
+export function addTeamMember(member: TeamMember) {
+  dashboardStore.set((s) => ({ ...s, teamMembers: [member, ...s.teamMembers] }));
 }
 
-export function updateRole(id: string, patch: Partial<Role>) {
+export function updateTeamMember(id: string, patch: Partial<TeamMember>) {
   dashboardStore.set((s) => ({
     ...s,
-    roles: s.roles.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+    teamMembers: s.teamMembers.map((m) => (m.id === id ? { ...m, ...patch } : m)),
   }));
 }
 
-export function deleteRole(id: string) {
+export function deleteTeamMember(id: string) {
   dashboardStore.set((s) => ({
     ...s,
-    roles: s.roles.filter((r) => r.id !== id),
+    teamMembers: s.teamMembers.filter((m) => m.id !== id),
   }));
 }

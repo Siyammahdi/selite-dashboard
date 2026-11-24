@@ -3,10 +3,11 @@
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { categories } from "@/lib/catalog";
+import { CategoryDrawer } from "@/components/products/category-drawer";
 import { ProductDrawer } from "@/components/products/product-drawer";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ChevronRightIcon } from "@/components/ui/icons";
+import { FilterDropdown } from "@/components/ui/filter-dropdown";
 import { FilterTabs } from "@/components/ui/filter-tabs";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pagination } from "@/components/ui/pagination";
@@ -18,6 +19,7 @@ import { formatAmount } from "@/lib/format";
 import { isLowStock, paginate } from "@/lib/metrics";
 import { setProductActive, useDashboard } from "@/lib/stores/dashboard";
 import { pushToast } from "@/lib/stores/ui";
+import type { ProductCategory } from "@/lib/types";
 
 const PAGE_SIZE = 10;
 
@@ -29,18 +31,27 @@ export function ProductsView() {
   const [tab, setTab] = useState<"Product" | "Category">("Product");
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
   const stockFilter = searchParams.get("stock") === "low";
+  const categoryFilter = searchParams.get("category") ?? "";
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [query, setQuery] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [categoryDrawer, setCategoryDrawer] = useState<{ open: boolean; category: ProductCategory | null }>({
+    open: false,
+    category: null,
+  });
   const selected = selectedId != null ? (state.products.find((p) => p.id === selectedId) ?? null) : null;
 
-  function updateQuery(next: { stock?: boolean; page?: number }) {
+  function updateQuery(next: { stock?: boolean; category?: string; page?: number }) {
     const params = new URLSearchParams(searchParams.toString());
     const lowStock = next.stock ?? stockFilter;
+    const nextCategory = next.category ?? categoryFilter;
     const nextPage = next.page ?? page;
 
     if (lowStock) params.set("stock", "low");
     else params.delete("stock");
+
+    if (nextCategory) params.set("category", nextCategory);
+    else params.delete("category");
 
     if (nextPage <= 1) params.delete("page");
     else params.set("page", String(nextPage));
@@ -52,6 +63,7 @@ export function ProductsView() {
   const filteredProducts = useMemo(() => {
     let list = state.products;
     if (stockFilter) list = list.filter(isLowStock);
+    if (categoryFilter) list = list.filter((p) => p.category === categoryFilter);
     if (query.trim()) {
       const q = query.toLowerCase();
       list = list.filter(
@@ -62,19 +74,24 @@ export function ProductsView() {
       );
     }
     return list;
-  }, [state.products, stockFilter, query]);
+  }, [state.products, stockFilter, categoryFilter, query]);
 
   const paged = paginate(filteredProducts, page, PAGE_SIZE);
 
-  const categoryRows = categories.map((cat) => {
+  const categoryFilterOptions = state.categories.map((cat) => ({
+    value: cat.slug,
+    label: cat.name,
+    count: state.products.filter((p) => p.category === cat.slug).length,
+  }));
+
+  const categoryRows = state.categories.map((cat) => {
     const items = state.products.filter((p) => p.category === cat.slug);
+    const unitsSold = items.reduce((sum, p) => sum + p.unitsSold, 0);
     return {
-      slug: cat.slug,
-      name: cat.name,
+      category: cat,
       count: items.length,
-      active: items.filter((p) => p.active).length,
-      lowStock: items.filter(isLowStock).length,
-      image: items[0]?.image ?? "/images/product-thumb-1.png",
+      sold: unitsSold,
+      image: cat.image ?? items[0]?.image ?? "/images/product-thumb-1.png",
     };
   });
 
@@ -86,10 +103,7 @@ export function ProductsView() {
           {
             label: "Add Category",
             variant: "accent",
-            onClick: () => {
-              setTab("Category");
-              pushToast("Switch to Category tab to review groups", "info");
-            },
+            onClick: () => setCategoryDrawer({ open: true, category: null }),
           },
           { label: "Add New Item", onClick: () => setAddOpen(true) },
         ]}
@@ -100,13 +114,10 @@ export function ProductsView() {
           <FilterTabs
             tabs={[
               { label: "Product", count: state.products.length },
-              { label: "Category", count: categories.length },
+              { label: "Category", count: state.categories.length },
             ]}
             active={tab}
-            onChange={(label) => {
-              setTab(label as "Product" | "Category");
-              updateQuery({ page: 1 });
-            }}
+            onChange={(label) => setTab(label as "Product" | "Category")}
           />
           <div className="flex flex-wrap items-center gap-3">
             <SearchField
@@ -126,6 +137,12 @@ export function ProductsView() {
             >
               Low stock
             </button>
+            <FilterDropdown
+              value={categoryFilter}
+              onChange={(next) => updateQuery({ category: next, page: 1 })}
+              options={categoryFilterOptions}
+              allCount={state.products.length}
+            />
             <ToolbarActions
               onExport={() => {
                 downloadCsv(
@@ -151,8 +168,8 @@ export function ProductsView() {
         {tab === "Product" ? (
           paged.items.length === 0 ? (
             <EmptyState
-              title={query || stockFilter ? "No products match your filters" : "No products yet"}
-              description="Try clearing search / low-stock filter, or add a new item."
+              title={query || stockFilter || categoryFilter ? "No products match your filters" : "No products yet"}
+              description="Try clearing search / filters, or add a new item."
               action={{ label: "Add New Item", onClick: () => setAddOpen(true) }}
             />
           ) : (
@@ -230,27 +247,40 @@ export function ProductsView() {
             />
           </>
           )
+        ) : categoryRows.length === 0 ? (
+          <EmptyState
+            title="No categories yet"
+            description="Add your first category to start organizing products."
+            action={{ label: "Add Category", onClick: () => setCategoryDrawer({ open: true, category: null }) }}
+          />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {categoryRows.map((cat, index) => (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {categoryRows.map(({ category, count, sold, image }, index) => (
               <button
-                key={cat.slug}
+                key={category.slug}
                 type="button"
-                onClick={() => {
-                  setQuery(cat.name.split(" ")[0] ?? "");
-                  setTab("Product");
-                  updateQuery({ page: 1 });
-                }}
-                className="animate-fade-up flex items-center gap-3 rounded-xl border border-stone bg-white p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md"
+                onClick={() => setCategoryDrawer({ open: true, category })}
+                className="animate-fade-up overflow-hidden rounded-xl border border-stone bg-white text-left transition hover:-translate-y-0.5 hover:shadow-md"
                 style={{ animationDelay: `${index * 40}ms` }}
               >
-                <Image src={cat.image} alt="" width={64} height={64} className="size-16 rounded-lg object-cover" />
-                <div>
-                  <p className="font-semibold text-ink">{cat.name}</p>
-                  <p className="text-sm text-ink/70">
-                    {cat.count} products · {cat.active} active
+                <div className="relative aspect-[295/166] w-full bg-stone">
+                  <Image src={image} alt="" fill className="object-cover" />
+                  <span
+                    className={`absolute top-2 left-2 rounded border px-2 py-0.5 text-xs font-medium ${
+                      category.active
+                        ? "border-forest/30 bg-white/90 text-forest"
+                        : "border-stone bg-white/90 text-ink/50"
+                    }`}
+                  >
+                    {category.active ? "Active" : "Inactive"}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1 p-3">
+                  <p className="font-semibold text-flame">{category.name}</p>
+                  <p className="flex items-center gap-4 text-sm text-ink/70">
+                    <span>Items-{count}</span>
+                    <span>Sell-{sold}</span>
                   </p>
-                  <p className="text-xs text-flame">{cat.lowStock} low stock</p>
                 </div>
               </button>
             ))}
@@ -260,6 +290,11 @@ export function ProductsView() {
 
       <ProductDrawer open={addOpen} onClose={() => setAddOpen(false)} />
       <ProductDrawer open={!!selected} product={selected} onClose={() => setSelectedId(null)} />
+      <CategoryDrawer
+        open={categoryDrawer.open}
+        category={categoryDrawer.category}
+        onClose={() => setCategoryDrawer({ open: false, category: null })}
+      />
     </div>
   );
 }

@@ -1,4 +1,5 @@
-import { catalog, distinctModels, getCategoryName, type CatalogProduct } from "@/lib/catalog";
+import { catalog, categories as catalogCategories, distinctModels, getCategoryName, type CatalogProduct } from "@/lib/catalog";
+import { ACCESS_MODULES } from "@/lib/types";
 import type {
   AdminOrder,
   AdminProduct,
@@ -7,8 +8,9 @@ import type {
   Investment,
   Note,
   OrderStatus,
+  ProductCategory,
   Purchase,
-  Role,
+  TeamMember,
 } from "@/lib/types";
 
 const COURIERS = ["Pathao", "Steadfast", "RedX", "Sundarban"] as const;
@@ -279,44 +281,65 @@ export function buildNotes(): Note[] {
   ];
 }
 
-export function buildRoles(): Role[] {
+export function buildTeamMembers(): TeamMember[] {
   return [
     {
-      id: "ROLE-1",
-      name: "Owner",
-      permissions: ["orders", "products", "finance", "purchases", "roles", "notes", "settings"],
-      members: 1,
+      id: "USER-1",
+      name: "Siyam Mahdi",
+      email: "siyam@example.com",
+      phone: "01712345678",
+      password: "owner1234",
+      access: [...ACCESS_MODULES],
+      active: true,
     },
     {
-      id: "ROLE-2",
-      name: "Operations",
-      permissions: ["orders", "products", "purchases", "notes"],
-      members: 2,
+      id: "USER-2",
+      name: "Ahmed Miyaz",
+      email: "ahmedmiyaz@gmail.com",
+      phone: "01816816186",
+      password: "ops12345",
+      access: ["orders", "purchases"],
+      active: true,
     },
     {
-      id: "ROLE-3",
-      name: "Finance",
-      permissions: ["finance", "purchases", "notes"],
-      members: 1,
+      id: "USER-3",
+      name: "Nusrat Jahan",
+      email: "nusrat.jahan@example.com",
+      phone: "01699887766",
+      password: "finance2026",
+      access: ["finance", "purchases"],
+      active: true,
     },
     {
-      id: "ROLE-4",
-      name: "Support",
-      permissions: ["orders", "notes"],
-      members: 3,
+      id: "USER-4",
+      name: "Rafiul Hasan",
+      email: "rafiul.hasan@example.com",
+      phone: "01766554433",
+      password: "stock2026",
+      access: ["products", "notes"],
+      active: false,
     },
   ];
+}
+
+export function buildCategories(): ProductCategory[] {
+  return catalogCategories.map((c) => ({
+    slug: c.slug,
+    name: c.name,
+    active: true,
+  }));
 }
 
 export function createInitialState(): DashboardState {
   const products = buildAdminProducts();
   return {
     products,
+    categories: buildCategories(),
     orders: buildOrders(),
     expenses: buildExpenses(),
     investments: buildInvestments(),
     purchases: buildPurchases(products),
     notes: buildNotes(),
-    roles: buildRoles(),
+    teamMembers: buildTeamMembers(),
   };
 }
