@@ -2,15 +2,16 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
+import { InvoiceModal } from "@/components/orders/invoice-modal";
 import { OrderDrawer } from "@/components/orders/order-drawer";
+import { OrderRowActions } from "@/components/orders/order-row-actions";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ChevronRightIcon } from "@/components/ui/icons";
 import { FilterTabs } from "@/components/ui/filter-tabs";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchField } from "@/components/ui/search-field";
 import { StatusSelect } from "@/components/ui/status-select";
-import { ToolbarActions } from "@/components/ui/toolbar-actions";
+import { ToolbarActions, type DateRangeValue } from "@/components/ui/toolbar-actions";
 import { downloadCsv } from "@/lib/export";
 import { formatAmount } from "@/lib/format";
 import { orderStatusCounts, paginate } from "@/lib/metrics";
@@ -29,9 +30,19 @@ export function OrdersView() {
   const tab = searchParams.get("status") ?? ALL;
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
   const [query, setQuery] = useState("");
+  const [dateRange, setDateRange] = useState<DateRangeValue>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [invoiceOrderId, setInvoiceOrderId] = useState<string | null>(null);
+  const [dateCutoff, setDateCutoff] = useState<number | null>(null);
+
+  function changeDateRange(value: DateRangeValue) {
+    setDateRange(value);
+    setDateCutoff(value === "all" ? null : Date.now() - Number(value) * 24 * 60 * 60 * 1000);
+    updateQuery({ page: 1 });
+  }
   const selected = selectedId ? (state.orders.find((o) => o.id === selectedId) ?? null) : null;
+  const invoiceOrder = invoiceOrderId ? (state.orders.find((o) => o.id === invoiceOrderId) ?? null) : null;
 
   function updateQuery(next: { status?: string; page?: number }) {
     const params = new URLSearchParams(searchParams.toString());
@@ -73,8 +84,11 @@ export function OrdersView() {
           o.courier.toLowerCase().includes(q),
       );
     }
+    if (dateCutoff !== null) {
+      list = list.filter((o) => new Date(o.createdAt).getTime() >= dateCutoff);
+    }
     return list;
-  }, [state.orders, tab, query]);
+  }, [state.orders, tab, query, dateCutoff]);
 
   const paged = paginate(filtered, page, PAGE_SIZE);
 
@@ -105,6 +119,8 @@ export function OrdersView() {
             />
             <ToolbarActions
               items={["date", "export"]}
+              dateValue={dateRange}
+              onDateChange={changeDateRange}
               onExport={() => {
                 downloadCsv(
                   "selite-orders.csv",
@@ -169,14 +185,10 @@ export function OrdersView() {
                         />
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          className="text-ink transition hover:translate-x-0.5"
-                          aria-label={`Open ${order.id}`}
-                          onClick={() => setSelectedId(order.id)}
-                        >
-                          <ChevronRightIcon />
-                        </button>
+                        <OrderRowActions
+                          onView={() => setSelectedId(order.id)}
+                          onDownloadInvoice={() => setInvoiceOrderId(order.id)}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -197,6 +209,8 @@ export function OrdersView() {
       <OrderDrawer open={createOpen} onClose={() => setCreateOpen(false)} />
 
       <OrderDrawer open={!!selected} order={selected} onClose={() => setSelectedId(null)} />
+
+      <InvoiceModal open={!!invoiceOrder} order={invoiceOrder} onClose={() => setInvoiceOrderId(null)} />
     </div>
   );
 }

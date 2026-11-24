@@ -136,6 +136,22 @@ export function deleteInvestment(id: string) {
   }));
 }
 
+export function addExpenseCategory(name: string) {
+  dashboardStore.set((s) =>
+    s.expenseCategories.some((c) => c.toLowerCase() === name.toLowerCase())
+      ? s
+      : { ...s, expenseCategories: [...s.expenseCategories, name] },
+  );
+}
+
+export function addInvestCategory(name: string) {
+  dashboardStore.set((s) =>
+    s.investCategories.some((c) => c.toLowerCase() === name.toLowerCase())
+      ? s
+      : { ...s, investCategories: [...s.investCategories, name] },
+  );
+}
+
 export function addPurchase(purchase: Purchase) {
   dashboardStore.set((s) => ({ ...s, purchases: [purchase, ...s.purchases] }));
 }

@@ -245,6 +245,17 @@ export function buildExpenses(): Expense[] {
   ];
 }
 
+export const DEFAULT_EXPENSE_CATEGORIES = [
+  "Product Purchase",
+  "Marketing",
+  "Accessories",
+  "Salary",
+  "Technical",
+  "Others",
+];
+
+export const DEFAULT_INVEST_CATEGORIES = ["Operations", "Inventory", "Marketing", "Equipment", "Technical", "Brand", "Others"];
+
 export function buildInvestments(): Investment[] {
   return [
     { id: "INV-001", name: "Initial Inventory Stock", category: "Inventory", amount: 150000, date: displayDate(dateDaysAgo(40)) },
@@ -337,7 +348,9 @@ export function createInitialState(): DashboardState {
     categories: buildCategories(),
     orders: buildOrders(),
     expenses: buildExpenses(),
+    expenseCategories: [...DEFAULT_EXPENSE_CATEGORIES],
     investments: buildInvestments(),
+    investCategories: [...DEFAULT_INVEST_CATEGORIES],
     purchases: buildPurchases(products),
     notes: buildNotes(),
     teamMembers: buildTeamMembers(),

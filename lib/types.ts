@@ -79,18 +79,10 @@ export type AdminOrder = {
   deliveryCharge: number;
 };
 
-export type ExpenseCategory =
-  | "Product Purchase"
-  | "Marketing"
-  | "Accessories"
-  | "Salary"
-  | "Technical"
-  | "Others";
-
 export type Expense = {
   id: string;
   name: string;
-  category: ExpenseCategory;
+  category: string;
   amount: number;
   date: string;
   details?: string;
@@ -158,7 +150,9 @@ export type DashboardState = {
   categories: ProductCategory[];
   orders: AdminOrder[];
   expenses: Expense[];
+  expenseCategories: string[];
   investments: Investment[];
+  investCategories: string[];
   purchases: Purchase[];
   notes: Note[];
   teamMembers: TeamMember[];

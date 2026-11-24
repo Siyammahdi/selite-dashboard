@@ -35,7 +35,7 @@ export function Pagination({
           className="flex size-8 items-center justify-center rounded border border-stone bg-white transition hover:bg-snow disabled:opacity-40"
           aria-label="Previous page"
         >
-          <Image src="/icons/carat.svg" alt="" width={24} height={24} className="size-6 rotate-180" />
+          <Image src="/icons/carat-ink.svg" alt="" width={8} height={13} className="rotate-90" />
         </button>
         {pages.map((item, index) =>
           item === "…" ? (
@@ -64,7 +64,7 @@ export function Pagination({
           className="flex size-8 items-center justify-center rounded border border-stone bg-white transition hover:bg-snow disabled:opacity-40"
           aria-label="Next page"
         >
-          <Image src="/icons/carat.svg" alt="" width={24} height={24} className="size-6" />
+          <Image src="/icons/carat-ink.svg" alt="" width={8} height={13} className="-rotate-90" />
         </button>
       </div>
     </div>

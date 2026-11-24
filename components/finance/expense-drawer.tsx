@@ -1,31 +1,24 @@
 "use client";
 
 import { useState } from "react";
+import { AddCategoryModal } from "@/components/finance/add-category-modal";
 import { Drawer, DrawerActions } from "@/components/ui/drawer";
 import { DateInput, NumberInput, SelectField, TextArea, TextInput } from "@/components/ui/form-fields";
 import { DocumentIcon } from "@/components/ui/icons";
 import { dateInputFromDisplay, displayDateFromInput, parseMoney, todayInputValue } from "@/lib/form-utils";
 import {
   addExpense,
+  addExpenseCategory,
+  addInvestCategory,
   addInvestment,
   deleteExpense,
   deleteInvestment,
   updateExpense,
   updateInvestment,
+  useDashboard,
 } from "@/lib/stores/dashboard";
 import { pushToast } from "@/lib/stores/ui";
-import type { Expense, ExpenseCategory, Investment } from "@/lib/types";
-
-const EXPENSE_CATEGORIES: ExpenseCategory[] = [
-  "Product Purchase",
-  "Marketing",
-  "Accessories",
-  "Salary",
-  "Technical",
-  "Others",
-];
-
-const INVEST_CATEGORIES = ["Operations", "Inventory", "Marketing", "Equipment", "Others"];
+import type { Expense, Investment } from "@/lib/types";
 
 type ExpenseDrawerProps = {
   open: boolean;
@@ -79,8 +72,10 @@ function ExpenseDrawerForm({
   record?: Expense | Investment | null;
   onClose: () => void;
 }) {
+  const state = useDashboard();
   const editing = Boolean(record);
   const isExpense = mode === "expense";
+  const categories = isExpense ? state.expenseCategories : state.investCategories;
   const initial = recordDefaults(mode, record);
   const [name, setName] = useState(initial.name);
   const [amount, setAmount] = useState(initial.amount);
@@ -90,6 +85,7 @@ function ExpenseDrawerForm({
   const [notes, setNotes] = useState(initial.notes);
   const [documentName, setDocumentName] = useState(initial.documentName);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [addCategoryOpen, setAddCategoryOpen] = useState(false);
 
   function validate() {
     const next: Record<string, string> = {};
@@ -112,7 +108,7 @@ function ExpenseDrawerForm({
       const payload: Expense = {
         id: record?.id ?? `EXP-${Date.now().toString().slice(-4)}`,
         name: name.trim(),
-        category: category as ExpenseCategory,
+        category,
         amount: parseMoney(amount),
         date: displayDate,
         details: details.trim(),
@@ -160,6 +156,7 @@ function ExpenseDrawerForm({
   }
 
   return (
+    <>
     <Drawer
       open
       title={
@@ -198,10 +195,8 @@ function ExpenseDrawerForm({
           label="Category"
           value={category}
           onChange={setCategory}
-          options={(isExpense ? EXPENSE_CATEGORIES : INVEST_CATEGORIES).map((c) => ({
-            value: c,
-            label: c,
-          }))}
+          options={categories.map((c) => ({ value: c, label: c }))}
+          footerAction={{ label: "+ Add New Category", onClick: () => setAddCategoryOpen(true) }}
         />
         <TextArea label="Details" rows={6} value={details} onChange={setDetails} />
         <TextArea label="Internal notes" rows={3} value={notes} onChange={setNotes} />
@@ -222,5 +217,15 @@ function ExpenseDrawerForm({
         ) : null}
       </div>
     </Drawer>
+    <AddCategoryModal
+      open={addCategoryOpen}
+      onClose={() => setAddCategoryOpen(false)}
+      onAdd={(newName) => {
+        if (isExpense) addExpenseCategory(newName);
+        else addInvestCategory(newName);
+        setCategory(newName);
+      }}
+    />
+    </>
   );
 }
