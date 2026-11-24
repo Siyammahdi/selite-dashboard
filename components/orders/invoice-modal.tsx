@@ -16,8 +16,8 @@ export function InvoiceModal({ open, order, onClose }: InvoiceModalProps) {
   const deliveryCharge = Math.round(order.deliveryCharge);
 
   return (
-    <div className="animate-fade-in fixed inset-0 z-[90] flex justify-center overflow-y-auto bg-ink/60 p-4 print:static print:block print:bg-white print:p-0">
-      <div className="flex w-full max-w-[650px] flex-col gap-4 pb-10 print:max-w-none print:pb-0">
+    <div className="animate-fade-in fixed inset-0 z-[90] flex justify-center overflow-y-auto bg-ink/60 p-4">
+      <div className="flex w-full max-w-[650px] flex-col gap-4 pb-10">
         <div className="flex items-center justify-end gap-2 print:hidden">
           <button
             type="button"
@@ -35,7 +35,7 @@ export function InvoiceModal({ open, order, onClose }: InvoiceModalProps) {
           </button>
         </div>
 
-        <div className="animate-scale-in flex flex-col gap-6 rounded-lg bg-white p-8 text-ink shadow-2xl print:rounded-none print:p-10 print:shadow-none">
+        <div className="print-only animate-scale-in flex flex-col gap-6 rounded-lg bg-white p-8 text-ink shadow-2xl print:rounded-none print:p-10 print:shadow-none">
           <div className="flex items-start justify-between gap-4">
             <Image src="/icons/logo-sidebar.svg" alt="Selite Lifestyle" width={113} height={41} />
             <div className="text-right text-sm">

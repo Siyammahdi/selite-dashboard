@@ -119,3 +119,24 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Printing an overlay (e.g. the invoice) must not also print the dashboard page behind it. */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  .print-only,
+  .print-only * {
+    visibility: visible !important;
+  }
+  .print-only {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+}
